@@ -1,6 +1,5 @@
 ---
 title: "DEPENd/DNPL MLM Workshop 2021"
-author: "Michael Hallquist"
 date: "Spring 2021"
 output:
   html_document:
