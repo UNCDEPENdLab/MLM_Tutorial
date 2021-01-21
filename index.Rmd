@@ -1,0 +1,37 @@
+---
+title: "DEPENd/DNPL MLM Workshop 2021"
+author: "Michael Hallquist"
+date: "Spring 2021"
+output:
+  html_document:
+    df_print: kable
+    mathjax: default
+    number_sections: no
+    theme: spacelab
+    toc: no
+    fig_width: 9 
+    fig_height: 6 
+---
+<style type="text/css">
+body{ font-size: 20px; max-width: 1600px; margin: auto; padding: 1em; }
+code.r{ font-size: 20px; }
+p { padding-top: 10px; padding-bottom: 10px; }
+pre { font-size: 16px; }
+</style>
+
+Welcome to the DEPENd Lab/DNPL workshop on multilevel modeling. This is the Spring 2021 edition. This website provides access to course materials and examples. For access to the `Rmd` files containing all code, see [here](https://github.com/UNCDEPENdLab/MLM_Tutorial).
+
+The goal of this workshop is to provide an overview of multilevel modeling and to consider its application to behavioral data, particularly from cognitive and decision-making tasks.
+
+To obtain an initial copy of the materials for this workshop, use `git clone` to download the course repository: 
+`git clone https://github.com/UNCDEPENdLab/MLM_Tutorial`
+
+If you already cloned a local copy of the repo, you can get the latest updates using `git update.` If all of this git stuff is foreign, I'd recommend a quick skim of this documentation: https://happygitwithr.com
+
+# Meeting topics
+
+## 21Jan2021: Review of GLM (Regression, ANOVA)
+  - [Regression overview](01_Regression/01_Correlation_and_Regression.html)
+  - [ANOVA and GLM examples](01_Regression/03_Basic_Analysis.html)
+  - [ANOVA contrast tutorial](https://cran.r-project.org/web/packages/afex/vignettes/afex_anova_example.html)
+  - [Matrix algebra and the GLM](01_Regression/02_Matrix_Algebra_Overview.html)
