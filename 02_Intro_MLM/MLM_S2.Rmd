@@ -30,14 +30,7 @@ You have secret intel on how much Matt James likes (on a scale from 0 to 100) ea
 
 *A few pieces of key information*
 
-
-
-
 The Bachelor: 
-
-
-
-
 
 ```{r, out.width = "400px", echo = FALSE}
 
@@ -48,7 +41,7 @@ knitr::include_graphics("images/the-bachelor-matt-james-1591971156.jpg")
 
 The remaining contestants:
 
-![The 15 Women Left on the Show](images/Remaining Women.png)
+![The 15 Women Left on the Show](images/Remaining Women.jpg)
 ```{r, echo = FALSE}
 
 abigail_log <- c(80, 75, # first impression rose
@@ -558,7 +551,7 @@ Here, the data is structured so that interaction i is nested with contestant j.
 
 Level 1 model (within person):
 $$
-like_{ij} = \beta_{0j} + \beta_{1j}*interaction_{ij} + r_{ij}
+like_{ij} = \beta_{0j} + \beta_{1j} \cdot interaction_{ij} + r_{ij}
 $$
 
 $$
@@ -584,7 +577,7 @@ $$
 Reduced form expression:
 
 $$
-like_{ij} = (\gamma_{00} + \mu_{0j})+ (\gamma_{10} + \mu_{1j})*interaction_{ij} + r_{ij}
+like_{ij} = (\gamma_{00} + \mu_{0j})+ (\gamma_{10} + \mu_{1j}) \cdot interaction_{ij} + r_{ij}
 $$
 
 OR
@@ -647,7 +640,7 @@ $$
 $$
 In other words, log likelihood refers to the "likelihood of the data given the model and parameters."
 
-### An Alogrithm's Journey: Optimizing Parameter Estimates
+### An Algorithm's Journey: Optimizing Parameter Estimates
 
 To provide an intuition for how this works, let us return to the example of the Bachelor, let's say we are trying to estimate the association between attractiveness and Matt's rating of each contestant. The algorithm sees these two columns of data and must find the best coefficient that maps attractiveness onto Matt's ratings. 
 
