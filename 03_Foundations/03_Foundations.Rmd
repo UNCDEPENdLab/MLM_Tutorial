@@ -30,7 +30,7 @@ pre { font-size: 16px; }
 if (!require(pacman)) { install.packages("pacman"); library(pacman) }
 p_load(knitr, tidyverse, broom, lme4, modelr, performance, afex, emmeans, cowplot, insight, merTools)
 knitr::opts_chunk$set(echo = TRUE) #print code by default
-options(digits=3) 
+options(digits=3, width=100) 
 ```
 
 Parts of this presentation have been adapted from the [larger workshop posted by Michael Clark](https://m-clark.github.io/mixed-models-with-R/extensions.html).
@@ -488,7 +488,7 @@ $$
 \begin{bmatrix} \tau_{00} & \tau_{\textrm{int,cond}} \\ 
 \tau_{\textrm{int,cond}} & \tau_{11}\end{bmatrix})
 $$
-Here, $\tau_{\textrm{int,cond}}$ represents the covariance between 
+Here, $\tau_{\textrm{int,cond}}$ represents the covariance between the a subject's estimated intercept and their estimated slope for the cond-RT association.
 
 ```{r}
 m3 <- lmer(rt_inv ~ block*cond + (1 + cond | id), flanker)
