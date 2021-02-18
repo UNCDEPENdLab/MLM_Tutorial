@@ -1,0 +1,163 @@
+---
+title: "Visualizing Nested and Cross Random Effects"
+author: "Josh Errickson"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+# Random Effects
+
+One way to think about random intercepts in a mixed models is the impact they will have on the residual covariance matrix. Of course, in a model with only fixed effects (e.g. `lm`), the residual covariance matrix is diagonal as each observation is assumed independent. In mixed models, there is a dependence structure across observations, so the residual covariance matrix will no longer be diagonal.
+
+## Nested versus Crossed
+
+Whether random effects are nested or crossed^["Crossed" simply means non-nested.] is a property of the data, not the model. However, when fitting the model, effects can be included as either nested or crossed.
+
+Nested random effects are when each member of one group is contained entirely within a single unit of another group. The canonical example is students in classrooms; you may have repeated measures per student, but each student belongs to a single classroom (assuming no reassignments).
+
+Crossed random effects are when this nesting is not true. An example would be different seeds and different fields used for planting crops. Seeds of the same type can be planted in different fields, and each field can have multiple seeds in it.
+
+# The visualization function
+
+This function extracts components of the mixed model and constructs the covariance matrix. From https://stackoverflow.com/a/45655597/905101
+
+```{r}
+rescov <- function(model, data) {
+  var.d <- crossprod(getME(model,"Lambdat"))
+  Zt <- getME(model,"Zt")
+  vr <- sigma(model)^2
+  var.b <- vr*(t(Zt) %*% var.d %*% Zt)
+  sI <- vr * Diagonal(nrow(data))
+  var.y <- var.b + sI
+  invisible(var.y)
+}
+```
+
+# Single random effect
+
+The data is `Penicillin` from the "lmer" package.
+
+```{r}
+library(lme4)
+data(Penicillin)
+head(Penicillin, 10)
+```
+
+This data is measuring Penicillin over a number of different trials. There are 24 plates and 6 samples, each plate having 1 replicate from each sample. (This is a fully crossed design, but it need not be.)
+
+For the time being, let's ignore the plate level effects, and fit a model with a random intercept only for sample.
+
+In this data there are no covariates to enter as fixed effects, but their existence would not impede things.
+
+```{r}
+mod1 <- lmer(diameter ~ 1 + (1 | sample), data = Penicillin %>% arrange(sample))
+rc1 <- rescov(mod1, Penicillin)
+image(rc1)
+```
+
+(The data is re-ordered by `sample` to improve visualization. You generally want the data sorted first by the higher level, then within that level, the next highest level, etc.)
+
+You see that this is block diagonal, with 6 blocks, each corresponding to one of the samples. This implies that the repeated measurements within each sample is correlated, but between samples are not correlated (as we expect).
+
+# Cross random effects
+
+Now let's refit the above model, including the crossed random effets. In `lmer`, we simply add a second random intercept.
+
+```{r}
+mod2 <- lmer(diameter ~ 1 + (1 | sample) + (1 | plate), data = Penicillin)
+rc2 <- rescov(mod2, Penicillin)
+image(rc2)
+```
+
+We see an additional pattern here. It can be hard to interpret at such a high level, so let's zoom in.
+
+```{r}
+image(rc2[1:12, 1:12])
+```
+
+The diagonal blocks represents the correlation across plates - here we see the first 2 (of total 24). The diagonal lines represent the sample correlations. This subset of covariance matrix is represented by this data:
+
+```{r}
+head(Penicillin, 12)
+```
+
+We see that observations 1 and 7 share the same `sample` "A", 2 and 8 share the same `sample` "B", etc. These entries are non-zero in the covariance matrix.
+
+# Nested random effects
+
+Now lets view a nested random effect. We'll switch to the `Oxide` data from "nlme"
+
+```{r}
+data(Oxide, package = "nlme")
+head(Oxide, 12)
+```
+
+We'll ignore the `Source` (there are only two) and instead focus on lots and wafers. There are 8 different lots, and within each lot there are 3 wafers. Three measurements are made on each Wafer (the `Site` variable) of the `Thickness`.
+
+Here `Wafer` is nested inside `Lot`.
+
+```{r}
+mod3 <- lmer(Thickness ~ 1 + (1|Lot/Wafer), data = Oxide)
+rc3 <- rescov(mod3, Oxide)
+image(rc3)
+```
+
+This is much cleaner as opposed to the crossed example. Each of the 8 larger blocks represents the correlations within each Lot, and the 3 smaller darker blocks within represent the additional correlation within each Wafer.
+
+What would the covariance matrix look like if we had crossed effects rather than nested?
+
+```{r}
+mod3b <- lmer(Thickness ~ 1 + (1|Lot) + (1|Wafer), data = Oxide)
+rc3b <- rescov(mod3b, Oxide)
+image(rc3b)
+```
+
+Because the wafers within each lot are named the same, we have spurious correlations.
+
+# Equivalency of cross and nested random effects
+
+As mentioned above, nested effects are an attribute of the data, not the model. We can include nested random effects using the cross effects syntax. In other words, for a nested structure, there is an equivalent crossed structure. (The reverse is **not** true.)
+
+The key is that the Wafer levels must be unique *in the data*, not just within each lot. Let's generate a unique version of wafer.
+
+```{r}
+Oxide <- mutate(Oxide, Wafer2 = as.numeric(paste0(Lot, Wafer)))
+head(Oxide, 12)
+```
+
+Let's check that this didn't break the nested structure.
+
+```{r}
+mod4 <- lmer(Thickness ~ 1 + (1|Lot/Wafer2), data = Oxide)
+summary(mod3)
+summary(mod4)
+```
+
+We saw before that adding crossed random effects with `Lot` and `Wafer` was not the same as nested. However, with `Lot` and `Wafer2`...
+
+```{r}
+mod4b <- lmer(Thickness ~ 1 + (1|Lot) + (1|Wafer2), data = Oxide)
+summary(mod4b)
+rc4b <- rescov(mod4b, Oxide)
+image(rc4b)
+```
+
+
+# Summary
+
+As long as the the levels of the nested variable are unique *across the data* as opposed to unique within each of the nesting variable, nested effects and crossed effects are identical. There's a very nice visualization of this found in this thread: https://stats.stackexchange.com/questions/228800/crossed-vs-nested-random-effects-how-do-they-differ-and-how-are-they-specified
+
+With this naming convention, nested and fixed effects will be **different**:
+
+![](https://i.stack.imgur.com/ahXIG.png)
+
+With this naming convention, nested and fixed effects will be **equivalent**:
+
+![](https://i.stack.imgur.com/PPZsq.png)

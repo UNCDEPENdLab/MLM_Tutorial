@@ -1,0 +1,512 @@
+---
+title: "MLM Intuitions, Implementation in R, Random Slopes"
+subtitle: "MLM Lab Workshop"
+author: "Michael Hallquist"
+date: "18Feb2021"
+output:
+  html_document:
+    code_folding: hide
+    df_print: kable
+    mathjax: default
+    number_sections: yes
+    theme: spacelab
+    toc: yes
+    toc_depth: 2
+  pdf_document:
+    code_folding: hide
+    df_print: kable
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+---
+<style type="text/css">
+body{ font-size: 24px; max-width: 1600px; margin: auto; padding: 1em; }
+code.r{ font-size: 20px; }
+p { padding-top: 8px; padding-bottom: 8px; }
+pre { font-size: 16px; }
+</style>
+
+```{r setup, include=FALSE}
+if (!require(pacman)) { install.packages("pacman"); library(pacman) }
+p_load(knitr, tidyverse, broom, lme4, modelr, performance, afex, emmeans, cowplot, insight, merTools)
+knitr::opts_chunk$set(echo = TRUE) #print code by default
+options(digits=3) 
+```
+
+Parts of this presentation have been adapted from the [larger workshop posted by Michael Clark](https://m-clark.github.io/mixed-models-with-R/extensions.html).
+
+# Terminology and synonyms
+
+The essential method that we're using in this workshop, which I'll call *multilevel modeling*, also has a number of other names that are essentially synonymous. Since you'll probably here these at several points, let me document them. At the root, all of these terms refer to the same statistical approach:
+
+- Hierarchical linear models
+- Random coefficient regression
+- Mixed effects models
+- Multilevel model
+- Intercepts-as-outcomes model
+- Intercepts-and-slopes-as-outcomes model
+- Individual growth curve model
+- Random effects model
+
+The term that best unifies all of these variants is *mixed effects model*, where *mixed* refers to the combination of *fixed effects* and *random effects*. I will use the term *multilevel model* in this workshop because we are specifically interested in data structures where many observations are nested within person (mostly, trials of an experiment). Conceptualizing such data in terms of levels (for us, within-person versus between-person) is helpful in the formulation and notation of the model.
+
+## Fixed effect
+
+A fixed effect summarizes the average effect of a predictor on the outcome across all observations in the sample. These are sometimes called *population average* effects, though that term shows up more in generalized estimating equation (GEE) models.
+
+Fixed effects are what we are used to from standard regression, namely _the estimated linear association between a predictor and the outcome_, partialed for other predictors in the model. The fixed effect of a predictor is a *single coefficient* that summarizes the average effect in the sample.
+
+## Random effect
+
+Bauer et al.: "Random factors involve units that are sampled from a broader population of potential units... These factors are referred to as random based on the idea that the particular units in the sample were randomly drawn from a population. This idea applies even if neither therapists nor patients were actually chosen randomly but still represent samples from broader populations. In analyzing the data, the goal is to make inferences that pertain to these broader populations (i.e., any patient seeing any therapist)."
+
+Random effects are incorporated into mixed models to represent the intuition that a given unit or cluster (often, person) represents random draws from a population of possible units. Though you will hear many definitions, random effects are simply those specific to an observational unit, however defined.
+
+Furthermore, in mixed models, by introducing a random *variance component* for a given variable in the model -- typically the intercept or the predictor slope -- we are assuming that the predictor varies from one unit to the next. Importantly, for us to have information about how predictor effects may differ from one unit to the next, we must have variation *within the unit* that gives us statistical information about whether a given unit has a stronger or weaker predictor-outcome association than the sample average (fixed effect).
+
+For multilevel models to be parsimonious, it is effective to make the assumption that variation in predictor effects across units follows some *statistical distribution*. For most modeling applications, we assume that the distribution of predictor effects follows a *normal distribution* whose variance is estimated based on the empirical variability across units.
+
+Recall our formula for the estimated intercept of each unit *j* (for us, think 'person') in a multilevel framework:
+
+$\beta_{0j} = \gamma_{00} +  \mu_{0j}$
+
+That is, a person's model-estimated intercept (overall level of the outcome when all predictors are zero) reflects the sample average $\gamma_{00}$ -- that is, the fixed effect -- plus some person/unit-specific deviation around the average, $\mu_{0j}$. The distributional assumption I just mentioned above means that the deviations around the sample average intercept are assumed to be normal:
+
+$$\mu_{0j} \sim \mathcal{N}(0, \tau_{00})$$
+Thus, $\tau_{00}$ is a *variance component* (the variance of the normal distribution of effects across units) that reflects how much between-unit variation there is in the intercept estimate.
+
+Another way to write this, which you'll see in the Hox book is:
+
+$$ \tau_{00} = \textrm{var}(\boldsymbol{\mu_{0j}}) $$
+That is, $\tau_{00}$ is the variance of the cluster-specific deviations around the overall intercept.
+## Fixed and random
+
+People often get mixed up by the intuition that an effect should be fixed *or* random, but not both. Allow me to clarify. If the variable only varies *between units* (think, between people) then it can only have a *fixed effect* in the model. For example, one cannot estimate whether the association between neuroticism (measured once) and wine drinking (bottles per week over one year) varies from one person to the next. Rather, in this case, neuroticism is a between-unit (aka 'level 2' or 'L2' or 'between-person') variable and we can only estimate the sample average effect (fixed) on overall wine drinking.
+
+Recall, however, that variables that have within-unit variation (aka 'level 1' or 'L1' or 'within-person') can have random effects in a multilevel framework, representing variation in the estimated effect of a predictor on the outcome. But, a level 1 predictor can have *both* fixed and random effects in a model.
+
+### TL;DR about fixed + random effects for L1 variables
+
+- The fixed effect represents sample average effect of the variable on the outcome
+- The random effect represent variation in this effect around the sample average
+- Fixed effect omitted, random effect included: 
+    You are assuming that the average effect is zero, and units vary normally around zero
+- Fixed effect included, random effect omitted: 
+    You are assuming that the sample average effect is a good approximation of all units and that
+    between-unit variation in the effect is essentially nil.
+
+If we rewrite the MLM notation above a bit, we can see this:
+
+$$
+y_{ij} = \beta_{0j} + \beta_{1.}x_{ij} + \varepsilon_{ij} \\
+\varepsilon_{ij} \sim \mathcal{N}(0, \sigma^2) \\
+\beta_{0j} \sim \mathcal{N}(\gamma_{00}, \tau_{00})
+$$
+This notation highlights that the model-estimated intercepts have an average of $\gamma_{00}$ --- the fixed effect --- and variation of $\tau_{00}$ --- the random effect.
+
+# Intuition from application: Flanker Task
+
+Let's look at experimental data from a common cognitive task, the flanker task. These are real data recently published in Hall, Schreiber, Allen, & Hallquist, *Journal of Personality*. This is a sample of 107 young adults who completed a version of the Eriksen flanker task.). In each trial, participants saw five horizontal arrows and were told to press a key corresponding to the direction of the center arrow (left or right). Participants were instructed to respond as quickly and accurately as possible. Half of the trials presented arrows on either side of the center arrow that pointed in the same direction ("congruent" trials), whereas the flanking arrows on the other trials pointed in the opposite direction ("incongruent" trials). 
+
+Participants completed 160 trials in two conditions: mostly congruent (70% of trials congruent) and mostly incongruent (70% of trials incongruent). Each condition was split into blocks of 40 trials. The direction of the central arrow was counterbalanced across trials. Four blocks of forty trials were presented in ABBA order, where A is a mostly congruent block and B is a mostly incongruent block. Stimuli were displayed for 1000ms each with a 500ms inter-trial interval (ITI).
+
+Congruent: $\leftarrow \leftarrow \leftarrow \leftarrow \leftarrow$
+
+Incongruent: $\leftarrow \leftarrow \rightarrow \leftarrow \leftarrow$
+
+## Data structure
+
+```{r}
+flanker <- readRDS(file="flanker_jop.rds") %>% arrange(id, trial)
+str(flanker)
+```
+
+The key dependent variables are reaction time (`rt`) and accuracy (`correct`). We will defer models of accuracy for a later workshop. Let's just focus on rt for today.
+
+```{r rtdist, fig=TRUE}
+lattice::histogram(~ rt | cond*block, flanker)
+```
+
+Notice how non-normal the RTs are? This is a familiar problem (e.g., see the classic Ratcliff 1993 *Psychological Bulletin* paper) and we will spend more time on it in a few weeks. For now, we can assume that the strong positive skew will be a problem when we fit a model (GLM or MLM) that assumes approximately normal residuals.
+
+Therefore, for now, we will transform the RTs to approximate normality for analysis. Two transformations are often effective: logarithm and inverse. Note that for the inverse ($1/x$) transformation, it is useful to take the *negative* inverse so that higher values still represent longer RTs. Furthermore, the inverse often leads to very tiny values, so scaling up by a large constant (100 or 1000) can make the variable more practically useful (avoid tiny regression coefficients, for example).
+
+
+```{r rtlog, fig=TRUE}
+flanker <- flanker %>% mutate(
+  rt_log10 = log10(rt),
+  rt_inv = -1000/rt
+)
+  
+lattice::histogram(~ rt_log10 | cond*block, flanker)
+```
+
+```{r rtinv, fig=TRUE}
+lattice::histogram(~ rt_inv | cond*block, flanker)
+```
+
+Here, the inverse RT looks awfully good -- we'll use this moving forward.
+
+### Person-period form (long form)
+
+Thinking back to our multilevel structure, we have 160 trials nested within 107 people. Thus, our dataset should be 17,120 rows in long form. (Note that if there were missing or dropped trials, this number could be lower). For virtually all MLMs (in R), we want our data in person-period form (more generically, 'long form') where one variable encodes person (level 2 unit) and another encodes the period or repetition for each observation (level 1 unit). Other variables would encode predictors or outcome variables.
+
+```{r}
+head(flanker)
+```
+
+### L1 and L2 variables
+
+Let's think through what variables exist at the within-person (L1) and between-person (L2) levels.
+
+*Level 1* -- *within-person*
+
+1. rt: reaction time (in milliseconds)
+2. cond: congruent, incongruent (type of flanker display)
+3. block: most_incon, most_con (proportion of incongruent or congruent trials in a block)
+4. trial: linear trial number
+5. run_trial: linear trial number within each run (consisting of 40 trials)
+
+*Level 2* -- *between-person*
+
+1. exclude: An exclusion variable for sensitivity analysis, where higher values denote more dubious data
+2. MPS_aggression: The MPQ aggression subscale (personality)
+3. MPS_alienation: The MPQ alienation subscale (personality)
+
+*Unit variables*
+
+1. id: The subject ID number
+2. run: The run number (4 per person)
+
+## Basic research questions
+
+1. Are RTs slower for incongruent relative to congruent trials?
+2. Are RTs slower for mostly incongruent blocks relative to mostly congruent blocks?
+3. Are congruent RTs slower in mostly incongruent blocks relative to mostly congruent blocks?
+3. Do RTs change substantially with experience (i.e., as trial increases)?
+
+# Fitting things the wrong way: GLM
+
+Recall from Alison's lecture that when we violate the assumption of independent residuals, we probably need to move away from the standard general linear model (GLM). The level of non-independence of observations within a cluster is proportionate to the intraclass correlation:
+
+$$
+ICC = \frac{s^2_b}{s^2_b + s^2_w}
+$$
+
+What happens if we plow through these considerations and try to address our questions above?
+
+Our basic model of the task would be:
+
+$$
+\textrm{RT}_{ij} = \beta_{0} + \beta_{1} \textrm{block}_{ij} + \beta_{2} \textrm{cond}_{ij} +
+  \beta_{3}  \textrm{block}_{ij} \cdot \textrm{cond}_{ij} + \varepsilon_{ij} \\
+\boldsymbol{\varepsilon} \sim \mathcal{N}(0, \sigma^2)
+$$
+where we have trial $i$ nested within subject $j$.
+
+**Note**: none of the coefficients varies by subject or trial, only the residuals do!
+
+```{r, fig=TRUE}
+lm_fit <- lm(rt_inv ~ block*cond, flanker)
+summary(lm_fit)
+car::Anova(lm_fit, type=3)
+summary(emblock <- emmeans(lm_fit, ~block))
+pairs(emblock)
+
+summary(emcond <- emmeans(lm_fit, ~cond))
+pairs(emcond)
+```
+
+## What if we want these estimates on the original (back-transformed scale?)
+
+Force back onto original RT using custom function
+
+```{r}
+rg <- update(ref_grid(lm_fit), tran=list(linkinv=function(x) { -1000/x }, mu.eta=function(x) { -1000/x }), predict.type="response")
+summary(res_trans <- emmeans(rg, ~cond|block))
+summary(emmeans(rg, ~cond))
+summary(emmeans(rg, ~block))
+
+emmip(rg, ~cond|block)
+
+pairs(emmeans(lm_fit, ~block|cond))
+
+ggplot(lm_fit, aes(sample = rstandard(lm_fit))) + 
+  geom_qq() + stat_qq_line() + 
+  ggtitle("Normal Q-Q plot on standardized residuals")
+
+```
+
+
+At a high level, we might conclude that there is some evidence that:
+
+1. RTs are about 20ms slower for incongruent relative to congruent trials
+2. RTs are somewhat *faster* in mostly incongruent blocks
+3. Congruent RTs are slightly faster in mostly incongruent blocks
+4. Incongruent trials are much slower in mostly congruent compared to mostly congruent blocks!
+
+## We knows it's wrong (conceptually), but can we see the violations?
+
+```{r}
+df <- flanker %>% add_residuals(model = lm_fit)
+
+by_subj <- ggplot(df, aes(x=factor(id), y=resid)) + 
+  stat_summary(fun.data = mean_cl_boot, geom = "pointrange") + 
+  geom_hline(yintercept=0, color="blue", size=2) +
+  ggtitle("95% CIs on residuals by subject") +
+  labs(x=NULL) + ylim(-1.5, 1.6) +
+  theme_cowplot() +
+  theme(axis.text.x = element_blank())
+
+overall <- ggplot(df, aes(x=1, y=resid)) + geom_boxplot() + 
+  # stat_summary(fun.data = mean_cl_boot, geom = "pointrange") +
+  geom_hline(yintercept=0, color="blue", size=2) +
+  ggtitle("Overall") +
+  labs(x=NULL) + ylim(-1.5, 1.6) +
+  theme_cowplot() +
+  theme(axis.text.x = element_blank())
+
+plot_grid(by_subj, overall, nrow=1,rel_widths = c(0.8, 0.2))
+```
+
+By eye, it looks a bit suspicious, right?! Let's re-use the GLM to look at problems with the GLM. Here's a model that
+treats id as a factor and looks at whether there is significant variation across ids in the residuals.
+
+```{r}
+mm <- lm(resid ~ factor(id), df)
+summary(mm)
+car::Anova(mm, type=3)
+```
+
+So, yeah, an F-test of almost 100 is probably worth attention.
+
+More formally, we know that the ICC can give us a useful guide on whether clustering within units is substantial and, therefore, problematic for the GLM. Here, we calculate ICCs from the residuals of the GLM (i.e., removing variance due to condition and block).
+
+```{r}
+rfx_model <- lmer(resid ~ 1 + (1|id), df)
+performance::icc(rfx_model)
+```
+
+*Bonus* for reflection: is it a coincidence that this ICC is identical to the $R^2$ from the GLM of residuals with subject as a factor? No, it's not -- take some time to think on why these are equivalent.
+
+# Alternative: model each subject
+
+Conceptually, when we have repeated measures data, we are often interested in the possibility that certain relationships vary from one person to the next. Indeed, these between-person differences might be related to other
+individual difference variables such as personality traits.
+
+What if we wanted to take this approach here and get a sense of the how experimental effects differ by subject?
+
+## Visualize RT effects by subject
+
+Here are boxplots for the first 25 subjects
+```{r bigplot, fig=TRUE}
+ggplot(flanker %>% filter(id <= 25), aes(x=cond, y=rt, color=block)) + 
+  geom_boxplot() +
+  facet_wrap(~id)
+```
+
+Definitely some heterogeneity there!
+
+## Looking at coefficients by subject
+
+What if we truly treated data for each subject separately? We could split up the data by subject 
+and run a model with each person as a separate dataset.
+
+```{r coef_map, fig=TRUE, fig.height=8, fig.width=5}
+#a bit beyond the scope, but at a high level, we use dplyr and broom to run the same RT
+#Documentation: https://cran.r-project.org/web/packages/broom/vignettes/broom_and_dplyr.html
+res <- flanker %>%
+  group_by(id) %>%
+  nest() %>%
+  mutate(test=map(data, ~ lm(rt_inv ~ block*cond, .x, na.action = na.exclude)),
+         stats=map(test, tidy)) %>%
+  unnest(stats) %>% dplyr::select(-data, -test) %>%
+  ungroup() %>% group_by(term) %>% 
+  mutate(estimate_termz=as.vector(scale(estimate))) %>% 
+  ungroup()
+
+ggplot(res, aes(x=term, y=id, fill=estimate_termz)) + 
+  geom_tile() + scale_fill_viridis_c() + ggtitle("Coefficients") +
+  theme(axis.text.x=element_text(angle=90))
+```
+
+```{r coef_boxplot, fig=TRUE, fig.height=6, fig.width=5}
+overall <- data.frame(term=names(coef(lm_fit)), estimate=coef(lm_fit))
+ggplot(res, aes(x=1, y=estimate)) + geom_boxplot() + facet_wrap(~term, scales="free") + 
+  geom_point(data=overall, size=6, color="blue", shape=18) + 
+  labs(title="Heterogeneity in within-person model coefficients",
+       subtitle="Blue diamonds are coefs from overall lm()", x=NULL) +
+  theme(axis.text.x=element_blank(), axis.ticks.x=element_blank())
+```
+
+# Overview of mixed effects in lmer 
+
+Let's move into the formal MLM framework to examine these data. Here is the basic model for a random intercept model, where we allow the intercept to vary by cluster, but keep the condition effects (`cond` and `block`) homogeneous (i.e., fixed only).
+
+$$
+\textrm{RT}_{ij} = \beta_{0j} + \beta_{1} \textrm{block}_{ij} + \beta_{2} \textrm{cond}_{ij} +
+  \beta_{3}  \textrm{block}_{ij} \cdot \textrm{cond}_{ij} + \varepsilon_{ij} \\
+  \beta_{0j} = \gamma_{00} + \mu_{0j} \\
+  \boldsymbol{\mu_{0.}} \sim \mathcal{N}(0, \tau_{00}) \\
+  \boldsymbol{\varepsilon_{..}} \sim \mathcal{N}(0, \sigma^2)
+$$
+
+## Basic unconditional random intercept model 
+
+(Also called unconditional means model)
+
+MLM usually begins by running an unconditional model that allows for cluster variation in the mean/expectation/intercept. The term 'unconditional' refers to the fact that the outcome ($rt_inv$) is not conditioned on (regressed on) any predictor. In this scenario, the intercept of the model is nearly the same as the overall average in the sample (and the reason for small divergence would be a distraction at the moment).
+
+Why is this model useful? It gives us a starting point in terms of the amount of variation in the outcome that is attributable to between-cluster (here, between persons) versus within-cluster variation.
+
+```{r}
+m1 <- lmer(rt_inv ~ 1 + (1|id), flanker)
+summary(m1)
+
+mean(flanker$rt_inv, na.rm=TRUE)
+
+#store variance components
+v1 <- as.data.frame(get_variance(m1)) %>% mutate(model="unconditional random intercept") %>%
+  dplyr::select(model, var.fixed, var.intercept, var.residual)
+```
+
+As a quick overview of `lmer` syntax, all terms on the right-hand side that are not in parentheses are fixed effects in the model -- that is, the estimates reflect the sample average effect. Here, `~ 1` indicates that an overall intercept ($\gamma_{00}$) should be included in the model. Note that this the default, but it's useful to include it clarity.
+
+All terms included inside parentheses are entered as random effects, introducing a variance component for each term. Here, `1` within the parentheses requests that the intercept varies across clusters. The `|` operator denotes the separation between variance components and clustering variables. Here, `id` is the clustering variable, telling `lmer` that all terms on the left of the 'pipe' vary across units of the clustering variable on the right.
+
+To map this output onto our model:
+
+1. $\gamma_{00} = -2.6323$ (estimate of `Intercept` under fixed effects)
+2. $\tau_{00} = .0918$ (estimate of `Intercept` variation by `id` under random effects)
+3. $\textrm{var}(\boldsymbol{\varepsilon_{..}}) = .1507$ (estimate of residual variability under random effects)
+
+And remember our formula for ICC -- proportion of between-cluster variation relative to overall variation. With this in mind, we have the values to calculate it by hand:
+
+```{r}
+vc <- VarCorr(m1)
+print(vc,comp=c("Variance"))
+dd <- as.data.frame(vc)
+
+ICC_by_hand <- dd$vcov[dd$grp=="id"] / (dd$vcov[dd$grp=="id"] + dd$vcov[dd$grp=="Residual"])
+print(ICC_by_hand)
+
+#helper function
+performance::icc(m1)
+```
+
+### Important principle: good predictors reduce residual variation
+
+This principle is intuitive, but often overlooked. When we fit a standard GLM, we hope that as we add good predictors into the model, $SS_\textrm{Error}$ goes down, while the $SS_\textrm{Model}$ goes up.
+
+$$
+\begin{align}
+SS_\textrm{Total} &= \sum_{i=1}^{N}({y_i - \bar{y}})^2 \\
+SS_\textrm{Model} &= \sum_{i=1}^{N}({\hat{y}_i - \bar{y}})^2 \\
+SS_\textrm{Error} &= \sum_{i=1}^{N}({y_i - \hat{y}})^2 = SS_\textrm{Total} - SS_\textrm{Model}
+\end{align}
+$$
+
+By extension, when we move into the multilevel framework, *each* variance component (not just $\sigma^2$) represents variation that could potentially be explained by one or more predictors.
+
+In the MLM, however, we can think of each variance component as a 'compartment' of overall variance, where the compartments can vary by level (e.g., within- versus between-persons). For example, if we introduce a level 1 predictor, it can potentially explain variation -- and thus reduce the variance components -- for both the L1 residual variability ($\sigma^2$) and level 2 variability in intercepts ($\tau_{00}$). This relates to the discussion of parcelling within versus between variation in L1 predictors and the concept of a 'total effect' (that combines both L1 and L2 variation).
+
+## Basic random intercepts model
+
+Let's take a look at what happens to our model when we add in the design factors of `cond` and `block`. This is a basic random intercepts model where we have fixed effects of `cond` and `block` and intercepts that vary across subjects (random). A useful way to rewrite the MLM equation above is:
+
+$$
+\textrm{RT}_{ij} = \textrm{Intercept}_j + \beta_{1} \textrm{block}_{ij} + \beta_{2} \textrm{cond}_{ij} +
+  \beta_{3}  \textrm{block}_{ij} \cdot \textrm{cond}_{ij} + \varepsilon_{ij} \\
+  \textrm{Intercept}_{j} = \gamma_{00} + \mu_{0j} \\
+  {\textbf{Intercepts}} \sim \mathcal{N}(\gamma_{00}, \tau_{00})
+$$
+
+
+```{r}
+m2 <- lmer(rt_inv ~ block*cond + (1|id), flanker)
+summary(m2)
+
+v2 <- as.data.frame(get_variance(m2)) %>% mutate(model="random intercept cond+block") %>%
+  dplyr::select(model, var.fixed, var.intercept, var.residual)
+```
+
+Let's look at the reduction in variance components with the addition of fixed effects for cond and block
+
+```{r}
+v1_long <-  v1 %>% pivot_longer(-model) %>% rename(value.unconditional = value) %>% dplyr::select(-model)
+v2_long <-  v2 %>% pivot_longer(-model) %>% rename(value.addfixed = value) %>% dplyr::select(-model)
+v1_long %>% left_join(v2_long) %>% mutate(re.change.pct=(1 - value.addfixed/value.unconditional)*100) %>%
+  kable(digits=2)
+```
+Here, we see that introducing `cond*block` reduced L1 residual variability by about 2.6% but had no effect on variability in the intercepts.
+
+*For discussion:* I mentioned above that adding L1 predictors -- which is what cond and block are -- has the potential to explain variation at both L1 and L2. Why didn't we see any reduction in the intercept variability here?
+
+### Visualizing our random effects
+
+We can obtain the estimated random effects for each cluster in an `lmer` model using `ranef`.
+
+```{r}
+res <- ranef(m2)$id
+lattice::histogram(res$`(Intercept)`, xlab="Estimated subject intercepts (mu_0j)")
+```
+
+We can use `REsim` from `merTools` to get estimated random effects for each cluster (here, `id`), including uncertainties in these estimates. We can also plot these using `plotREsim`:
+
+```{r}
+#predictInterval(m2)   # for various model predictions, possibly with new data
+
+simranef <- REsim(m2)  # mean, median and sd of the random effect estimates
+simranef %>% head()
+plotREsim(simranef)  # plot the interval estimates
+```
+
+This is a handy plotting function because it shows by eye the tendency for cluster-level deviations to differ significantly from zero. Recall that if all cluster deviations (here, $\mu_{0j}$) are approximately zero, we don't really need to model that variance component (random effect).
+
+# Basic random slopes model
+
+What if we allowed for the possibility that the effect of incongruent vs. congruent trials varied by subject? That is, we think that there is some overall effect of congruency, but also that this effect could be stronger or weaker in some people.
+
+How does this modify our model above? To keep things simple for now (we'll come back to this), I'm falling back to an additive model that does not include the `cond*block` interaction.
+
+$$
+\begin{align}
+\textrm{RT}_{ij} &= \beta_{0j} + \beta_{1} \textrm{block}_{ij} + \beta_{2j} \textrm{cond}_{ij} + \varepsilon_{ij} \\
+  \beta_{0j} &= \gamma_{00} + \mu_{0j} \\
+  \beta_{1j} &= \gamma_{10} \\
+  \beta_{2j} &= \gamma_{20} + \mu_{2j} \\
+  \boldsymbol{\varepsilon_{..}} &\sim \mathcal{N}(0, \sigma^2)
+\end{align}
+$$
+
+$$
+\begin{bmatrix} 
+\mu_{0j} \\ 
+\mu_{2j} 
+\end{bmatrix} 
+\sim \mathcal{N}(\begin{bmatrix} 0 \\ 0\end{bmatrix}, 
+\begin{bmatrix} \tau_{00} & \tau_{\textrm{int,cond}} \\ 
+\tau_{\textrm{int,cond}} & \tau_{11}\end{bmatrix})
+$$
+Here, $\tau_{\textrm{int,cond}}$ represents the covariance between 
+
+```{r}
+m3 <- lmer(rt_inv ~ block*cond + (1 + cond | id), flanker)
+summary(m3)
+
+print(unlist(get_variance(m3)))
+simranef3 <- REsim(m3)  # mean, median and sd of the random effect estimates
+plotREsim(simranef3) + facet_wrap(~term, scales="free", ncol=1) # plot the interval estimates
+```
+
+We can see by eye that a handful of subjects have congruency slopes that differ reliably from zero, though this is not particularly striking relative to the random intercept. 
+
+## What about approximate normality of random effects?
+```{r}
+rr <- ranef(m3)$id %>% pivot_longer(cols=everything())
+
+ggplot(rr, aes(x=value)) + geom_histogram(bins=15) + 
+  facet_wrap(~name, scales="free")
+```
+
+Not too bad.

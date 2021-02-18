@@ -365,7 +365,7 @@ ICCs of .1 - .3 are common for individuals nested within group.
 
 
 ```{r}
-rfx_model <- lmer(like ~ 1 + (1|contestant), df)
+rfx_model <- lmer(resid ~ 1 + (1|id), df)
 performance::icc(rfx_model) # .74
 ```
 
