@@ -1,0 +1,237 @@
+---
+title: "MLM Intuitions, Within/Between and Fixed/Random"
+subtitle: "MLM Lab Workshop"
+author: "Michael Hallquist"
+date: "18Feb2021"
+output:
+  html_document:
+    code_folding: hide
+    df_print: kable
+    mathjax: default
+    number_sections: yes
+    theme: spacelab
+    toc: yes
+    toc_depth: 2
+  pdf_document:
+    code_folding: hide
+    df_print: kable
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+---
+<style type="text/css">
+body{ font-size: 24px; max-width: 1600px; margin: auto; padding: 1em; }
+code.r{ font-size: 20px; }
+p { padding-top: 8px; padding-bottom: 8px; }
+pre { font-size: 16px; }
+</style>
+
+```{r setup, include=FALSE}
+if (!require(pacman)) { install.packages("pacman"); library(pacman) }
+p_load(knitr, tidyverse, broom, lme4, modelr, performance, afex, emmeans, cowplot, insight, merTools)
+knitr::opts_chunk$set(echo = TRUE) #print code by default
+options(digits=3, width=100) 
+```
+
+Parts of this presentation have been adapted from the [larger workshop posted by Michael Clark](https://m-clark.github.io/mixed-models-with-R/extensions.html).
+
+# Terminology and synonyms
+
+The essential method that we're using in this workshop, which I'll call *multilevel modeling*, also has a number of other names that are essentially synonymous. Since you'll probably here these at several points, let me document them. At the root, all of these terms refer to the same statistical approach:
+
+- Hierarchical linear models
+- Random coefficient regression
+- Mixed effects models
+- Multilevel model
+- Intercepts-as-outcomes model
+- Intercepts-and-slopes-as-outcomes model
+- Individual growth curve model
+- Random effects model
+
+The term that best unifies all of these variants is *mixed effects model*, where *mixed* refers to the combination of *fixed effects* and *random effects*. I will use the term *multilevel model* in this workshop because we are specifically interested in data structures where many observations are nested within person (mostly, trials of an experiment). Conceptualizing such data in terms of levels (for us, within-person versus between-person) is helpful in the formulation and notation of the model.
+
+## Fixed effect
+
+A fixed effect summarizes the average effect of a predictor on the outcome across all observations in the sample. These are sometimes called *population average* effects, though that term shows up more in generalized estimating equation (GEE) models.
+
+Fixed effects are what we are used to from standard regression, namely _the estimated linear association between a predictor and the outcome_, partialed for other predictors in the model. The fixed effect of a predictor is a *single coefficient* that summarizes the average effect in the sample.
+
+## Random effect
+
+Bauer et al.: "Random factors involve units that are sampled from a broader population of potential units... These factors are referred to as random based on the idea that the particular units in the sample were randomly drawn from a population. This idea applies even if neither therapists nor patients were actually chosen randomly but still represent samples from broader populations. In analyzing the data, the goal is to make inferences that pertain to these broader populations (i.e., any patient seeing any therapist)."
+
+Random effects are incorporated into mixed models to represent the intuition that a given unit or cluster (often, person) represents random draws from a population of possible units. Though you will hear many definitions, random effects are simply those specific to an observational unit, however defined.
+
+Furthermore, in mixed models, by introducing a random *variance component* for a given variable in the model -- typically the intercept or the predictor slope -- we are assuming that the predictor varies from one unit to the next. Importantly, for us to have information about how predictor effects may differ from one unit to the next, we must have variation *within the unit* that gives us statistical information about whether a given unit has a stronger or weaker predictor-outcome association than the sample average (fixed effect).
+
+For multilevel models to be parsimonious, it is effective to make the assumption that variation in predictor effects across units follows some *statistical distribution*. For most modeling applications, we assume that the distribution of predictor effects follows a *normal distribution* whose variance is estimated based on the empirical variability across units.
+
+Recall our formula for the estimated intercept of each unit *j* (for us, think 'person') in a multilevel framework:
+
+$$\beta_{0j} = \gamma_{00} +  \mu_{0j}$$
+
+That is, a person's model-estimated intercept (overall level of the outcome when all predictors are zero) reflects the sample average $\gamma_{00}$ -- that is, the fixed effect -- plus some person/unit-specific deviation around the average, $\mu_{0j}$. The distributional assumption I just mentioned above means that the deviations around the sample average intercept are assumed to be normal:
+
+$$\mu_{0j} \sim \mathcal{N}(0, \tau_{00})$$
+Thus, $\tau_{00}$ is a *variance component* (the variance of the normal distribution of effects across units) that reflects how much between-unit variation there is in the intercept estimate.
+
+Another way to write this, which you'll see in the Hox book is:
+
+$$ \tau_{00} = \textrm{var}(\boldsymbol{\mu_{0j}}) $$
+That is, $\tau_{00}$ is the variance of the cluster-specific deviations around the overall intercept.
+
+## Fixed *and* random
+
+People often get mixed up by the intuition that an effect should be fixed *or* random, but not both. Allow me to clarify. If the variable only varies *between units* (think, between people) then it can only have a *fixed effect* in the two-level model. For example, one cannot estimate whether the association between neuroticism (measured once) and wine drinking (bottles per week over one year) varies from one person to the next. Rather, in this case, neuroticism is a between-unit (aka 'level 2' or 'L2' or 'between-person') variable and we can only estimate the sample average effect (fixed) on overall wine drinking.
+
+Recall, however, that variables that have within-unit variation (aka 'level 1' or 'L1' or 'within-person') can have random effects in a multilevel framework, representing variation in the estimated effect of a predictor on the outcome. But, a level 1 predictor can have *both* fixed and random effects in a model.
+
+### TL;DR about fixed + random effects for L1 variables
+
+- The fixed effect represents sample average effect of the variable on the outcome
+- The random effect represent variation in this effect around the sample average
+- Fixed effect omitted, random effect included: 
+    You are assuming that the average effect is zero, and units vary normally around zero
+- Fixed effect included, random effect omitted: 
+    You are assuming that the sample average effect is a good approximation of all units and that
+    between-unit variation in the effect is essentially nil.
+
+If we rewrite the MLM notation above a bit, we can see this:
+
+$$
+y_{ij} = \beta_{0j} + \beta_{1.}x_{ij} + \varepsilon_{ij} \\
+\varepsilon_{ij} \sim \mathcal{N}(0, \sigma^2) \\
+\beta_{0j} \sim \mathcal{N}(\gamma_{00}, \tau_{00})
+$$
+This notation highlights that the model-estimated intercepts have an average of $\gamma_{00}$ --- the fixed effect --- and variation of $\tau_{00}$ --- the random effect.
+
+# Within/between versus fixed/random
+
+It is tempting to combine the ideas of within/between (L1/L2) with fixed/random in some way, but we should be careful to keep these ideas separate in our minds. Here's how I think about the interface of within/between and fixed/random.
+
+## Fixed versus random: homogeneous versus heterogeneous effects
+
+Recall that a level 1 variable (for us, this usually means 'within-person') can exert influence on the outcome atboth the within and between levels. If we do not disaggregate this effect in some way (within-person centering or latent decomposition of within/between), then entering an L1 predictor into the model will yield its *total* effect on the outcome.
+
+If we go back to our wine drinking example, imagine that over one year, I repeatedly assessed positive affect (1-10 scale) on a weekly basis (level 1 predictor) alongside weekly bottles of wine consumed (outcome) for 100 data scientists. If I enter that predictor into the model as a *fixed effect*, I will get the *total* effect (combining L1 and L2 variation), which would allow me to ask: does positive affect influence wine drinking?
+
+```
+model <- lmer(wine ~ 1 + posaff + (1 | id), dataset)
+```
+
+Imagine that the answer is *yes*: $\beta_\textrm{posaff} = 0.3, t = 3.9, p < .01$. So, for each point positive affect goes up in a week, the model predicts that wine consumption will go up by about one-third of a bottle. Coming back to *fixed vs. random*, the question is: does the strength of this coefficient accurately summarize each person in the sample? Or are there people for whom positive affect is more *strongly* associated with wine consumption and others for whom the association is weaker?
+
+### Homogeneous effect: Fixed, not random (L1 predictor)
+
+If we enter positive affect only as a *fixed* effect into the model, we are assuming that its association with wine consumption is *homogeneous* across individuals (i.e., the 'level 2 units' in MLM jargon). Said differently, we assume that there is no variance in the coefficient:
+
+$$
+\textrm{var}(\beta_{\textrm{posaff},j}) = 0 \\
+\beta_{\textrm{posaff},1} = \beta_{\textrm{posaff},2} = \dots \beta_{\textrm{posaff},j}
+$$
+
+### Heterogeneous effect: Random, not fixed (L1 predictor)
+
+On the other hand, we might think that the effect of positive affect on wine consumption differs across people. If this is so, we should introduce it formally into the MLM by allowing the coefficient to vary across individuals (level 2 units). More specifically, we should add a *variance component* (i.e., a random effect) that represents normally distributed variation in the association of positive affect with wine consumption.
+
+First, what happens if we introduce this variance component, but do *not* include positive affect as a fixed effect?
+
+```
+model <- lmer(wine ~ 1 + (1 + posaff | id), dataset)
+```
+
+$$
+\boldsymbol{\beta}_{\textrm{posaff},j} \sim \mathcal{N}(0, \tau_{11})
+$$
+
+That is, for each individual $j$, we have person-specific slope estimate for the association of positive affect and wine consumption. In this way, the slope estimates are *heterogeneous* in that we allow them to vary by person. However, these estimates of the association are centered on zero (the mean or 'expectation') with a between-person variance of $\tau_{11}$.
+
+Looking at this carefully, note that we are assuming that the *average* effect of positive affect on wine consumption is 0 in the sample! That may be a rather strong assumption that biases the individual slope estimates.
+
+### Heterogeneous effect: Random and fixed (L1 predictor)
+
+If we would like to relax the model's representation that the positive affect-wine consumption slope should be zero on average, we should introduce positive affect as a *fixed* effect alongside its random effect (i.e., its between-subjects variance component).
+
+```
+model <- lmer(wine ~ 1 + posaff + (1 + posaff | id), dataset)
+```
+
+This parameterization gives rise to an estimated distribution of slopes in the sample (one value per person):
+
+$$
+\boldsymbol{\beta}_{\textrm{posaff},j} \sim \mathcal{N}(\gamma_{10}, \tau_{11})
+$$
+
+Now, rather than forcing the distribution to be centered on zero, we freely estimate the parameter $\gamma_{10}$ that represents the sample average effect of positive affect on wine consumption. This is still a *heterogeneous* representation of the association because it allow for between-person variation in the strength of the association. The difference is simply that the average effect can be non-zero.
+
+### Understanding the within/between distinction
+
+Now that we have an intuition for fixed and random effects, let's consider the difference between within-cluster and between-cluster effects. These are sometimes called L1 versus L2 effects and for us (working with experimental data consisting of many trials), we will usually think of these as within-person versus between-person effects.
+
+As noted above, the idea of disaggregating the effect of a predictor into its within-person and between-person contributions is only possible if the predictor has within-person variation (i.e., it is an L1 predictor). By definition, an L2 predictor can only exert influence at L2, not at L1. If you move into 3- or 4-level models (which I don't particularly recommend), you can generalize this idea to: _a predictor can only exert influence on the outcome at levels equal to or higher than its level of measurement._ (So, an L2 predictor could have L2, L3, and L4 effects in a 4-level model, but not L1 effects.)
+
+As already mentioned, if we enter an L1 variable into an MLM without any further transformation, we will observe its *total effect* (combining L1 and L2 influences). This can be of interest if clustering is more of a nuisance than a substantive feature, but for most MLM applications, we are explicitly interested in understanding influences of a predictor on an outcome at different levels.
+
+Alison mentioned in her lecture that one can use within-person centering and person-mean calculation to disaggregate the within and between effects. In mathy notation, let's look at what we mean.
+
+Recall that by entering positive affect (L1) into the model and allowing its effect on wine consumption to be heterogeneous (i.e., a random slope), we have this equation for the person-specific association estimate:
+
+$$
+\beta_{\textrm{posaff},j} = \gamma_{10} + \mu_{\textrm{posaff},j}
+$$
+
+With regard to within/between, the crucial point is: $\gamma_{10}$ represents the average association between positive affect and wine consumption at *both* levels of the model (within person and between persons). But what if we think that the within-person and between-person effects may be different in meaningful ways, or we at least want to consider this possibility?
+
+What does this mean? Imagine that on weeks that people feel more positive than is typical of them, they get so energetic that they prefer to go for long runs and avoid the soporific effects of wine. In this case, there may be a negative *within-person* association of positive affect with wine consumption. On the other hand, perhaps people who have higher *average* levels of positive affect (here, aggregating over one year) also tend to consume more wine (again, think 'total wine over the year'). In this case, there could be a positive *between-person* association between positive affect and wine consumption.
+
+Importantly, these possibilities are not at all mutually exclusive --- in fact, they are simply separate hypotheses that can be tested in an MLM. To open up this possibility, we must pull apart the L1 and L2 variation in positive affect. The most conventional approach to this is within-person centering (see Curran & Bauer, 2011) --- we'll talk about other methods later.
+
+The notation for the within-person centered positive affect is:
+
+$$
+\dot{\textrm{posaff}_{ij}} = \textrm{posaff}_{ij} - \bar{\textrm{posaff}_{j}}
+$$
+That is, we subtract the person mean positive affect, $\bar{\textrm{posaff}_{j}}$, from each observation for that person, $\textrm{posaff}_{ij}$.
+
+Importantly, we now have *two* variables where we previously had one. The level 1-specific variation in positive affect is: $\dot{\textrm{posaff}_{ij}}$ --- that is, the within-person centered positive affect. The level 2-specific positive affect is: $\bar{\textrm{posaff}_{j}}$ --- that is, the person's mean positive affect across all observations.
+
+In a way, the within-person-centered variate puts everyone on the playing field -- all variation is now about more or less positive affect *relative to their own mean*. If I'm a super-happy person or a super-unhappy person, on average, zero values for the within-person-centered variable nevertheless represent a week when my positive affect was at my personal mean.
+
+To pull part the within- and between-person effects of positive affect, we then introduce both of these new variables into the MLM:
+
+$$
+\begin{align*}
+\textrm{wine}_{ij} &= \beta_{0j} + \beta_{1j} \dot{\textrm{posaff}_{ij}} + \varepsilon_{ij} \\
+\beta_{0j} &= \gamma_{00} + \gamma_{01} \bar{\textrm{posaff}_{j}} + \mu_{0j} \\
+\beta_{1j} &= \gamma_{10} + \mu_{1j}
+\end{align*}
+$$
+
+Thus, the person's mean positive affect predicts between-person variation in wine consumption 
+(average levels -- hence being in the intercept equation), whereas person-centered
+variation in positive affect predicts the within-person association of positive affect with
+wine consumption.
+
+This is perhaps more evident in the combined equation:
+
+$$
+\textrm{wine}_{ij} = ( \gamma_{00} + \gamma_{01} \bar{\textrm{posaff}_{j}} +
+\gamma_{10} \dot{\textrm{posaff}_{ij}} ) + \\
+( \varepsilon_{ij} + \mu_{0j} + \mu_{1j} \dot{\textrm{posaff}_{ij}} )
+$$
+
+Note how $\textrm{posaff}$ enters the model in two ways (within-person and between-person levels). Note: the fixed effects are denoted in the first set of parentheses, and the random effects in the second.
+
+Also note that we still have a *random slope* of the within-person association of positive affect and wine consumption, represented by the $\mu_{1j}$ deviations (one per subject), centered on $\gamma_{10}$. Unlike the *total effect* example above, this variance component now represents between-person variation in the strength of the *within-person* (i.e., L1-specific) association of positive affect with wine consumption.
+
+But, just as we stated above, we could test a model in which we believe the within-person association of positive affect and wine consumption is *homogeneous* by retaining $\gamma_{10}$ as a fixed effect (the average within-person association) while assuming that there is not between-person variation in this association (i.e., $\textrm{var}(\boldsymbol{\mu}_{1j}) = 0$). We would simply drop the random slope, leaving this model representation:
+
+$$
+\begin{align*}
+\textrm{wine}_{ij} &= \beta_{0j} + \beta_{1j} \dot{\textrm{posaff}_{ij}} + \varepsilon_{ij} \\
+\beta_{0j} &= \gamma_{00} + \gamma_{01} \bar{\textrm{posaff}_{j}} + \mu_{0j} \\
+\beta_{1j} &= \gamma_{10}
+\end{align*}
+$$
+The only difference: $\mu_{1j}$ has disappeared from the $\beta_{1j}$ equation.
+

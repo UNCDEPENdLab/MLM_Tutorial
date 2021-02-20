@@ -39,5 +39,7 @@ If you already cloned a local copy of the repo, you can get the latest updates u
   - [MLM Overview](02_Intro_MLM/MLM_S2.html)
 
 ## 18Feb2021: MLM Intuitions, lme4 implementation, Random slopes
-  - [MLM intuitions, implementation](03_Foundations/03_Foundations.html)
+  - [MLM Intuitions, Within/Between and Fixed/Random](03_Foundations/03_Terms_L1L2.html)
+  - [MLM implementation, Flanker Example](03_Foundations/03_Foundations.html)
   - [Visualizing MLM representation of clustering](03_Foundations/vizrandomeffects.html)
+  
