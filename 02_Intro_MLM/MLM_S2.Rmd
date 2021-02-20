@@ -30,8 +30,20 @@ You have secret intel on how much Matt James likes (on a scale from 0 to 100) ea
 
 *A few pieces of key information*
 
+<<<<<<< HEAD
+
+
+
 The Bachelor: 
 
+
+
+
+
+=======
+The Bachelor: 
+
+>>>>>>> 02e24526fdd6cf191c8ec3477d7e42e65e228fe6
 ```{r, out.width = "400px", echo = FALSE}
 
 knitr::include_graphics("images/the-bachelor-matt-james-1591971156.jpg")
@@ -41,7 +53,11 @@ knitr::include_graphics("images/the-bachelor-matt-james-1591971156.jpg")
 
 The remaining contestants:
 
+<<<<<<< HEAD
+![The 15 Women Left on the Show](images/Remaining Women.png)
+=======
 ![The 15 Women Left on the Show](images/Remaining Women.jpg)
+>>>>>>> 02e24526fdd6cf191c8ec3477d7e42e65e228fe6
 ```{r, echo = FALSE}
 
 abigail_log <- c(80, 75, # first impression rose
@@ -365,7 +381,7 @@ ICCs of .1 - .3 are common for individuals nested within group.
 
 
 ```{r}
-rfx_model <- lmer(resid ~ 1 + (1|id), df)
+rfx_model <- lmer(like ~ 1 + (1|contestant), df)
 performance::icc(rfx_model) # .74
 ```
 
@@ -551,7 +567,11 @@ Here, the data is structured so that interaction i is nested with contestant j.
 
 Level 1 model (within person):
 $$
+<<<<<<< HEAD
+like_{ij} = \beta_{0j} + \beta_{1j}*interaction_{ij} + r_{ij}
+=======
 like_{ij} = \beta_{0j} + \beta_{1j} \cdot interaction_{ij} + r_{ij}
+>>>>>>> 02e24526fdd6cf191c8ec3477d7e42e65e228fe6
 $$
 
 $$
@@ -577,7 +597,11 @@ $$
 Reduced form expression:
 
 $$
+<<<<<<< HEAD
+like_{ij} = (\gamma_{00} + \mu_{0j})+ (\gamma_{10} + \mu_{1j})*interaction_{ij} + r_{ij}
+=======
 like_{ij} = (\gamma_{00} + \mu_{0j})+ (\gamma_{10} + \mu_{1j}) \cdot interaction_{ij} + r_{ij}
+>>>>>>> 02e24526fdd6cf191c8ec3477d7e42e65e228fe6
 $$
 
 OR
@@ -640,7 +664,11 @@ $$
 $$
 In other words, log likelihood refers to the "likelihood of the data given the model and parameters."
 
+<<<<<<< HEAD
+### An Alogrithm's Journey: Optimizing Parameter Estimates
+=======
 ### An Algorithm's Journey: Optimizing Parameter Estimates
+>>>>>>> 02e24526fdd6cf191c8ec3477d7e42e65e228fe6
 
 To provide an intuition for how this works, let us return to the example of the Bachelor, let's say we are trying to estimate the association between attractiveness and Matt's rating of each contestant. The algorithm sees these two columns of data and must find the best coefficient that maps attractiveness onto Matt's ratings. 
 
@@ -718,7 +746,87 @@ In examining the Bachelor data set, we'll need to use REML and Kenward-Roger deg
 
 *N.B.* There are additional adjustments that can be made if clustering in the data is not best addressed with these other techniques (e.g., a small subset of participants happen to be related, but this is not a design feature and there are not enough observations within a cluster to warrant inclusion of a fixed efffect). 
 
+<<<<<<< HEAD
+
+## A brief update about the show...
+
+When the show announced the contestants, concerns about Rachael began to arise:
+
+* Social media posts of her at an Antebellum Old South Party in 2018 (an exclusive sorority party dedicated to celebrating pre-Civil War South that had been banned by nationals years earlier)
+* Pictures of her appropriating Native American culture on Halloween 
+* Several claims that she bullied peers for dating black guys in High School 
+* "Liking" several posts of her friends posing with a confederate flag or being culturally insensitive
+* Sharing of QAnon conspiracy theories and far-right media on different social media platforms
+
+6 weeks after these social media posts and other information surfacing, Rachael had remained silent and had not released any statement. 
+
+Chris Harrison, host of the show for the past 19 years, came onto Extra with Rachel Lindsay (the first Black Bachelorette). In this interview, he:
+
+* Indicated that attending an Antebellum Old South Party was not a bad look in 2018 (and that 50 million people did that)
+* Asked that we have grace and compassion for Rachael, until she was ready to come forward
+* Accused those on social media of being the "Woke Police"
+* Expressed that neither Rachel Lindsay, nor him, were in a position to judge or ask for an apology
+* Talked over Rachel Lindsay several times during the interview itself
+
+
+
+
+Afterwards, he conveyed to Rachel that he felt that this was a productive conversation.
+
+
+
+After the video aired, he faced backlash. Only then did he apologize to Rachel Lindsay and make a public statement.
+
+
+
+A petition was started asking for Chris Harrison to step down as the spokesperson for the franchise.
+
+
+
+He later announced he would be taking a leave of absence.
+
+
+### Where does this fit with the broader history in the Bachelor?
+
+The Bachelor franchise has long faced criticism for not having sufficient representation of POC on the show. 
+
+
+Indeed, up until 2017, no Black individuals had been the Bachelor or Bachelorette and there had been only one instance of a person of color as a Bachelor (Juan Pablo in 2014). 
+
+
+
+
+There have been several instances in which the Bachelor or Bachelorette has only learned after the fact of a contestants un-woke beliefs (e.g., Garrett in Becca's season). Even on Rachel Lindsay's season, producers cast  Lee Garrett as a contestant, who openly held racist beliefs. His racist beliefs were then used to stir conflict among the contestants. 
+
+
+
+
+On the heels of George Floyd, a petition started to increase diversity in the Bachelor. This resulted in Matt James being selected for the Bachelor and season 25 of the Bachelor having the most diverse cast yet. 
+
+
+
+
+Nonetheless, the franchise has largely approached race issues through a lens of assimilationism. Moreover, how the franchise has characterized POC on the show is markedly different:
+
+1. The franchise edited comments about Tayshia to only comment on her physical attractiveness. 
+
+
+2. Screen time during Matt's season has focused solely on the drama and little on (a) the relationships and (b) the stories of the contestants.
+
+
+3. Of the relationships discussed, a disproportionate amount of time is dedicated to Matt's relationship with white women (e.g., more screen time has been dedicated to his relationship with Rachael than the three other remaining contestants combined).
+
+
+4. In the face of a contestant holding damaging beliefs, the franchise has done nothing to protect Matt James. Conversely, when problematic contestants were on Hannah Brown's season, the franchise was quick to portray the contestant in a bad light (e.g., Jed) or even be physically protective of Hannah Brown (e.g., Luke P).
+
+
+Thus, if the franchise is genuinely committed to "being better on race," more work is needed. 
+
+
+## Back to the topic of MLM: Decomposing within versus between variance. 
+=======
 ## Decomposing within versus between variance. 
+>>>>>>> 02e24526fdd6cf191c8ec3477d7e42e65e228fe6
 
 
 One of the really neat features of MLM is that we're able to leverage the structure of the data fully to examine phenomenon that happesn at the within and between levels. 
@@ -823,3 +931,21 @@ plot_model(Q2_lmer, type = "pred", terms = c("PA.mean", "contestant"), pred.type
 
 ```
 
+<<<<<<< HEAD
+
+### What is the predicted "liking" for each of the contestants?
+
+Model predictions:
+```{r}
+
+plot_model(Q2_lmer, type = "re")
+
+
+```
+
+Let's compare that to who is remaining?
+
+![The 4 Women Left on the Show](images/Remaining Women after Wk 7.png)
+
+=======
+>>>>>>> 02e24526fdd6cf191c8ec3477d7e42e65e228fe6
