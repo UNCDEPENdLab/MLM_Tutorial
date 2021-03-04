@@ -28,7 +28,8 @@ pre { font-size: 16px; }
 
 ```{r setup, include=FALSE}
 if (!require(pacman)) { install.packages("pacman"); library(pacman) }
-p_load(knitr, tidyverse, broom, lme4, modelr, performance, afex, emmeans, cowplot, insight, merTools)
+p_load(knitr, tidyverse, broom, lme4, modelr, performance, afex, emmeans, cowplot, insight, merTools,
+       ggeffects, sjPlot)
 knitr::opts_chunk$set(echo = TRUE) #print code by default
 options(digits=3, width=100) 
 ```
@@ -196,7 +197,7 @@ overall <- ggplot(df, aes(x=1, y=resid)) + geom_boxplot() +
   theme_cowplot() +
   theme(axis.text.x = element_blank())
 
-plot_grid(by_subj, overall, nrow=1,rel_widths = c(0.8, 0.2))
+cowplot::plot_grid(by_subj, overall, nrow=1,rel_widths = c(0.8, 0.2))
 ```
 
 By eye, it looks a bit suspicious, right?! Let's re-use the GLM to look at problems with the GLM. Here's a model that
@@ -351,6 +352,8 @@ $$
   {\textbf{Intercepts}} \sim \mathcal{N}(\gamma_{00}, \tau_{00})
 $$
 
+This notation emphasizes that the intercepts are a *set* of values, one per subject, and are normally distributed with mean $\gamma_{00}$ and variance $\tau_{00}$.
+
 
 ```{r}
 m2 <- lmer(rt_inv ~ block*cond + (1|id), flanker)
@@ -393,6 +396,8 @@ plotREsim(simranef)  # plot the interval estimates
 
 This is a handy plotting function because it shows by eye the tendency for cluster-level deviations to differ significantly from zero. Recall that if all cluster deviations (here, $\mu_{0j}$) are approximately zero, we don't really need to model that variance component (random effect).
 
+Furthermore, as discussed previously, if we add predictors (as fixed effects) into the model and they explain considerable between-subjects (or more generally, between-cluster) variability, the subject-specific intercepts will increasingly approach zero and the variance component $\tau_{00}$ will also diminish toward zero.
+
 # Basic random slopes model
 
 What if we allowed for the possibility that the effect of incongruent vs. congruent trials varied by subject? That is, we think that there is some overall effect of congruency, but also that this effect could be stronger or weaker in some people.
@@ -421,7 +426,7 @@ $$
 Here, $\tau_{\textrm{int,cond}}$ represents the covariance between the a subject's estimated intercept and their estimated slope for the cond-RT association.
 
 ```{r}
-m3 <- lmer(rt_inv ~ block*cond + (1 + cond | id), flanker)
+m3 <- lmer(rt_inv ~ block + cond + (1 + cond | id), flanker)
 summary(m3)
 
 print(unlist(get_variance(m3)))
@@ -431,7 +436,26 @@ plotREsim(simranef3) + facet_wrap(~term, scales="free", ncol=1) # plot the inter
 
 We can see by eye that a handful of subjects have congruency slopes that differ reliably from zero, though this is not particularly striking relative to the random intercept. 
 
+## Visualizing these effects
+
+```{r}
+plot_model(m2, type = "pred", terms = c("cond", "block"), pred.type = "re") + 
+  labs(x = "Condition", y = "RT inverse", title = "Predicted effects in model that excludes condition random slope")
+
+#add back interaction to make it comparable to random intercept model (m2)
+m4 <- lmer(rt_inv ~ block + cond + (1 + cond | id), flanker)
+
+plot_model(m4, type = "pred", terms = c("cond", "block"), pred.type = "re") + 
+  labs(x = "Condition", y = "RT inverse", title = "Predicted effects in model that includes condition random slope")
+
+plot_model(m4, type = "re", terms = c("cond", "block")) + 
+  #facet_wrap(~facet, scales="free_y") +
+  labs(y = "Model effect", x = "ID", title = "Model that includes random slopes")
+
+```
+
 ## What about approximate normality of random effects?
+
 ```{r}
 rr <- ranef(m3)$id %>% pivot_longer(cols=everything())
 
@@ -439,4 +463,10 @@ ggplot(rr, aes(x=value)) + geom_histogram(bins=15) +
   facet_wrap(~name, scales="free")
 ```
 
-Not too bad.
+Not too bad. One of our assumptions in MLM is that the random effects are distributed as (approximately) multivariate normal. Here, I've plotted the univariate distributions. We would also perhaps want to check that the bivariate distribution is approximately normal.
+
+If you really want to get fancy, you could formally test for multivariate normality using the `MVN` package, though this is overkill for most applications.
+
+```{r}
+ggplot(ranef(m3)$id, aes(x=`(Intercept)`, y=condincongruent)) + geom_density_2d()
+```

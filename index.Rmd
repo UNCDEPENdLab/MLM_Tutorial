@@ -1,5 +1,6 @@
 ---
 title: "DEPENd/DNPL MLM Workshop 2021"
+subtitle: "Organized by Michael Hallquist"
 date: "Spring 2021"
 output:
   html_document:
@@ -43,3 +44,5 @@ If you already cloned a local copy of the repo, you can get the latest updates u
   - [MLM implementation, Flanker Example](03_Foundations/03_Foundations.html)
   - [Visualizing MLM representation of clustering](03_Foundations/vizrandomeffects.html)
   
+## 4Mar2021: Effect heterogeneity
+  - [Random slopes, Causal effect heterogeneity](04_Heterogeneity/04_Heterogeneity.html)

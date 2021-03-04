@@ -1,0 +1,465 @@
+---
+title: "Heterogeneity of effects, Random Slopes"
+subtitle: "MLM Lab Workshop"
+author: "Michael Hallquist"
+date: "4Mar2021"
+output:
+  html_document:
+    code_folding: hide
+    df_print: kable
+    mathjax: default
+    number_sections: yes
+    theme: spacelab
+    toc: yes
+    toc_depth: 2
+  pdf_document:
+    code_folding: hide
+    df_print: kable
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+---
+<style type="text/css">
+body{ font-size: 24px; max-width: 1600px; margin: auto; padding: 1em; }
+code.r{ font-size: 20px; }
+p { padding-top: 8px; padding-bottom: 8px; }
+pre { font-size: 16px; }
+</style>
+
+```{r setup, include=FALSE}
+if (!require(pacman)) { install.packages("pacman"); library(pacman) }
+p_load(knitr, tidyverse, broom, lme4, modelr, performance, afex, emmeans, cowplot, insight, merTools,
+       ggthemes)
+knitr::opts_chunk$set(echo = TRUE) #print code by default
+options(digits=3, width=100) 
+
+# Define function to take the sum or mean and remove NAs
+sum.na <- function (x) {
+  out <- sum(x, na.rm=T)
+  out
+}
+
+```
+
+
+# Important messages from Bolger et al., 2019
+
+One of the sacred cows of experimental psychology is that mean differences between levels of an experimentally manipulated factor provide evidence of the causal importance of that factor. 
+
+For example, if I am testing the effect of distraction on working memory performance, I might manipulate the loudness of background music during a computer-based digit span task in which each subject completes 12 trials. I might try three levels of music: none, quiet (50 dB), or loud (80 dB). Imagine that I run this experiment in 75 subjects, randomly assigning 25 to each music condition. Here are the condition means and SDs of number of digits recalled, averaging number of words per subject before computing the condition means.
+
+| Condition    |   Mean   |   SD   |
+| ---------    |   ----:  |  ---:  |
+| No music     |   7.2    |  1.4   |
+| Quiet        |   6.8    |  1.5   |
+| Loud         |   5.5    |  2.5   |
+
+In this case, I might run a one-way ANOVA and observe the following: 
+
+```{r}
+digit_data <- mvrnorm(n=25, mu=c(7.2, 6.8, 5.5), Sigma=diag(c(1.4, 1.5, 2.5))^2, empirical=T) %>% as.data.frame() %>%
+  setNames(c("none", "quiet", "loud")) %>% 
+  pivot_longer(cols = everything(), names_to = "condition", values_to = "digit_span") %>%
+  mutate(id=1:n(), condition=ordered(condition, levels=c("none", "quiet", "loud")))
+
+aobj <- afex::aov_ez(id="id", dv="digit_span", between = "condition", data=digit_data)
+summary(aobj)
+afex::afex_plot(aobj, x="condition")
+
+m1 <- emmeans(aobj, ~condition)
+pairs(m1)
+```
+
+Looks like it's time to write a paper!! I'm loving that omnibus *p*-value. The Tukey-adjusted pairwise tests also suggest that it's really the loud music that is disruptive to digit span, while quiet music has a non-significant impact.
+
+## Under the hood of ANOVA: assuming causal homogeneity
+
+Importantly, however, we have done some violence to the data in our effort to summarize effects in the sample. As noted above we, aggregate the 12 trials per subject to derive subject means for ANOVA, so we've already remove within-subject variability. Furthermore, our statistics assume that the causal effect of music on digit span is essentially *homogeneous* across people. That is, we are saying that there is no interesting variation in the mean difference between two conditions across people.
+
+Bolger and colleagues note, however, that experimental manipulations may have *heterogeneous* effects on the outcome variable (here, digit span) across people. Imagine a person who is hearing-impaired --- they are unlikely to suffer much performance penalty on the task as music volume is increased.
+
+If we manipulate a factor between subjects, we cannot know whether individual differences in values within a given condition (to which people are randomly assigned) is due to measurement error or other noncausal factors. If we manipulate the factor within subjects, however, we can potentially tap into causal effect heterogeneity and, moreover, model both its magnitude and identify between-subjects predictors that account for this heterogeneity.
+
+Multilevel models are ideally suited to model causal effect heterogeneity when we have repeated measures for each person (level 2 unit). The key asset of these models in this regard is that they can estimate person-specific associations between an experimental factor and the outcome through the incorporation of a random slope (variance component) for that factor.
+
+**For discussion**: If I have a between-subjects factor (e.g., level of background music) but observe the dependent variable many times (e.g., digit span performance on 12 trials), can I estimate causal effect heterogeneity because I have repeated measures?
+
+As Bolger and colleagues note, "Even if experimenters wish to focus solely on average causal effects, this approach [repeated-measures ANOVA] should ideally be justified by a mixed-model analysis showing that causal heterogeneity is minor and ignorable." (p. 614).
+
+## Analyzing the same data within an MLM framework
+
+```{r}
+## scale data up to 12 trials per subject
+f_var_alpha <- function(ICC, var_epsilon){
+  var_alpha <- (ICC*var_epsilon)/(1-ICC)
+  return(var_alpha)
+}
+
+#simulate data with approx. ICC of 0.3, but keep person and condition means the same as above
+var_alpha <- f_var_alpha(ICC = 0.3, var_epsilon = 15)
+
+df_multilevel <- bind_rows(lapply(1:nrow(digit_data), function(rr) {
+  
+  multi_trial <- mvrnorm(n=12, mu = digit_data$digit_span[rr], 
+                         Sigma = var_alpha, empirical=T) %>% 
+    as.data.frame() %>%
+    setNames("digit_span") %>%
+    mutate(condition=digit_data$condition[rr], id=digit_data$id[rr])
+  
+  return(multi_trial)
+})) %>% mutate(id=factor(id), condition=as.factor(as.character(condition))) #remove ordered
+
+mlm_obj <- lmer(digit_span ~ condition + (1|id), data=df_multilevel)
+performance::icc(mlm_obj)
+summary(mlm_obj)
+```
+
+We can try to hack the condition into the model as a random slope, but we should be worried. What is wrong with this?
+
+```{r}
+mlm_obj <- lmer(digit_span ~ condition + (1 + condition | id), data=df_multilevel)
+summary(mlm_obj)
+```
+## Objectives of Bolger and colleagues
+
+1. "To convince experimentalists in psychology to change their metatheory of causal processes from a one-size-fits-all view to one that allows for subject-level heterogeneity."
+2. "To provide the field with an accessible guide on how to estimate, display, and draw theoretical implications from causal effect heterogeneity."
+3. "To show that attention to causal effect heterogeneity will lead to better research practice."
+
+The TL;DR version of these objectives in the context of MLMs is: "Include experimental factors as random slopes in a multilevel model framework and examine whether there is significant between-person variation in the effect of these factors on the dependent variable."
+
+## Trait valence effects (Experiment 1)
+
+```{r}
+rndt <- read.csv("heterogeneity_dataset1_traitvalence.csv") %>%
+  filter(response.keys=="up") %>%  # subset to only select traits endorsed as self-relevant
+  mutate(
+    rt.z = as.vector(scale(rt)),
+    valence_fac = factor(valenceE, levels=c(-0.5, 0.5), labels=c("negative", "positive"))
+  ) %>%
+  filter(rt.z < 3) %>% #within +3 SD of the mean RT
+  filter(!id %in% c(250, 257, 272)) # drop three participants who did not select any negative words
+
+
+# Compute the number of positive and negative words endorsed, plus ratio of positive to negative
+# .c: centering proportion on mean, which is 62% of words endorsed as positive
+rndt <- rndt %>%
+  mutate(posval = ifelse(valenceE == .5, 1, 0),
+         numpos = ave(posval, id, FUN = sum.na),
+         negval = ifelse(valenceE == -.5, 1, 0),
+         numneg = ave(negval, id, FUN = sum.na),
+         valenceprop = numpos/(numpos + numneg),
+         valenceprop.c = valenceprop - mean(valenceprop) 
+  )
+```
+
+Here, I present the data from Experiment 1 in Bolger and colleagues (2019), which I downloaded here: https://github.com/kzee/heterogeneityproject. Description, "Participants were presented with positively and negatively valenced trait words and asked to indicate whether each of the words was self-descriptive. Response time for each word was measured. A straightforward prediction is that participants will be faster to endorse positive self-descriptions, given that people are motivated to maintain a positive self-view."
+
+Following the paper, we will analyze only traits endorsed as self-relevant. We also drop RTs > 3 SDs above the sample average and drop three participants who did not endorse any negative words.
+
+Note that as with our flanker data, we see positive skewness of RTs and a log transformation cleans them up.
+
+```{r}
+lattice::histogram(~rt | valence_fac, rndt, main="Untransformed RT")
+lattice::histogram(~logrt | valence_fac, rndt, main="Log(RT)")
+```
+
+First, let's analyze the data under the assumption that participants can differ in mean RT, but that the effect of valence (positive, negative) is the same across people. In MLM terms, this is a random intercept (only) model:
+
+$$
+\log(\textrm{RT}_{ij}) \sim \mathcal{N}(\mu_j + \beta_1 \textrm{valence}_{ij}, \sigma_\varepsilon) \\
+\mu_j \sim \mathcal{N}(\gamma_{00}, \tau_{00})
+$$
+
+Here, we have a *distribution* of intercepts with variance $\tau_{00}$ centered on the sample-average intercept $\gamma_{00}$. But the coefficient for the effect of valence on RT is unitary -- there is no between-subjects variation. In MLM speak, valence is a fixed effect in the model, but not random.
+
+```{r}
+# lmer logrt - f(valence) with random intercepts only
+valrt_intonly <- lmer(logrt ~ valence_fac + (1 | id),  data=rndt)
+summary(valrt_intonly)
+```
+
+Now let's allow for heterogeneity in the effect of valence on RT. To do this, we add a random slope (variance component) of valence.
+
+$$
+\log(\textrm{RT}_{ij}) \sim \mathcal{N}(\mu_j + \beta_{1j} \textrm{valence}_{ij}, \sigma_\varepsilon) \\
+\mu_j \sim \mathcal{N}(\gamma_{00}, \tau_{00}) \\
+\beta_{1j} \sim \mathcal{N}(\gamma_{10}, \tau_{11})
+$$
+
+The major innovation here is that the slope coefficient $\beta_{1j}$ is now allowed to vary from one subject to the next, with between-subjects heterogeneity (variance) being captured by $\tau_{11}$. As before, we retain the sample-average slope in the model as a fixed effect, captured by $\gamma_{10}$.
+
+```{r}
+# with random alopes (used in paper)
+valrt_intslope <- lmer(logrt ~ valence_fac + (1 + valence_fac | id),  data=rndt)
+summary(valrt_intslope)
+
+# convert ranefs to a dataframe 
+valrt_intslope_tidy <- tidy(valrt_intslope)
+
+```
+
+We'll cover this in more detail later, but at a high level, we should wonder: does the addition a random slope to the model substantially improve fit? If it does not, this suggests there is not meaningful between-person variation in the effect of valence on RT. If it does improve fit, we should probably retain the variance component for valence and perhaps also look for variables that explain between-person variation in this slope.
+
+We will use a likelihood ratio test (LRT) to compare the two models in terms of their relative fit. A significant *p*-value indicates evidence of improved fit in one model over the other.
+
+```{r}
+anova(valrt_intonly, valrt_intslope) #Compares heterogeneity with no-heterogeneity model using LR Chi-square test
+```
+
+This LRT suggests that there is substantial between-person variation in the effect of valence on RT.
+
+### When should we be concerned about heterogeneity of causal effects?
+
+"We suggest that as a rule of thumb, causal effect heterogeneity is noteworthy if its SD is 0.25 or greater of the average (fixed) effect."
+
+## Measurement error and shrinkage
+
+"The mean difference between the subject’s responses across conditions is, in itself, an unbiased estimate of the subject’s causal effect. Its true value is uncertain to some extent, however, because we used only a limited number of trials within each condition. That uncertainty is indexed by the standard error of the subject’s mean difference, and one can think of it as a form of measurement error."
+
+"Now consider viewing the effect for a sample of subjects, each of whose experimental effect is uncertain. Just as one would see with a set of error-prone measurements, the observed variation will be the sum of the true variation and the error variation, and will always show an upward bias. In our example, the subject-by- subject valence effect heterogeneity must be adjusted downward ('shrunken') in order for it to be a valid estimate of true population heterogeneity. Mixed models provide a way of accomplishing this... The more uncertain a subject’s raw mean difference, the more it is shrunken toward the estimated population mean."
+
+Figure 3 from the paper: 
+
+```{r}
+
+cfs2 <- ranef(valrt_intslope)$id
+cfs2$id <- row.names(cfs2)
+colnames(cfs2) <- c("ebintercept", "ebslope", "id")
+
+
+# adding in fixed effects
+cfs2$intercept <- summary(valrt_intslope)$coeff["(Intercept)", "Estimate"] + cfs2$ebintercept
+cfs2$slope <- summary(valrt_intslope)$coeff["valence_facpositive", "Estimate"] + cfs2$ebslope
+
+
+rndtznum <- dplyr::select(rndt, id, numneg)
+#rndtznum[order(rndtznum$numneg),]
+# need to omit 306 bc this participant only chose 1 neg trait
+
+ids <- unique(subset(rndt, id != 306)$id)
+diff <- data.frame(sub = ids, diff = NA, lower = NA, upper = NA)
+for(i in ids){
+  data_i <- subset(rndt, rndt$id == i)
+  rts <- split(data_i, data_i$valence_fac)
+  t <- t.test(rts$negative[, "logrt"], rts$positive[, "logrt"])
+  diff[i, 2:4] <- c((t$estimat[2]-t$estimat[1]), t$conf.int[2:1])
+}
+diff_i <- diff[order(diff$diff),]
+diff_i$id <- as.numeric(row.names(diff_i))
+diff_i$lower <- -1*diff_i$lower
+diff_i$upper <- -1*diff_i$upper
+diff_i <- subset(diff_i, is.na(diff)==F)
+
+## Merge raw estimates with model estimates of valence effect
+
+valranefs <- dplyr::select(cfs2, id, slope)
+valestimates <- merge(diff_i, valranefs, by = 'id')
+valestimates2 <- valestimates[order(valestimates$diff),]
+head(valestimates2)
+valestimates2$idorder <- 1:58
+
+valestimates_rawdiff <- dplyr::select(valestimates2, id, diff) 
+colnames(valestimates_rawdiff) <- c('id', 'diff_rt') 
+valestimates_rawdiff$type <- "Observed Effects"
+
+valestimates_preddiff <- dplyr::select(valestimates2, id, slope) 
+colnames(valestimates_preddiff) <- c('id', 'diff_rt') 
+valestimates_preddiff$type <- "Model Predictions"
+
+valestimates3 <- rbind(valestimates_rawdiff, valestimates_preddiff)
+
+
+plotvalest2 <- ggplot(valestimates3, aes(type, diff_rt)) +
+  geom_hline(yintercept = summary(valrt_intslope)$coeff["valence_facpositive", "Estimate"] , size = 1, color = "black") +    
+  geom_hline(yintercept = 0, size = .5, color = "gray50", linetype = "solid") +
+  geom_hline(yintercept = fixef(valrt_intslope)[2] + -1.96*subset(valrt_intslope_tidy, term == "sd__valence_facpositive")$estimate, size = 1, color = "red") +
+  geom_hline(yintercept = fixef(valrt_intslope)[2] + 1.96*subset(valrt_intslope_tidy, term == "sd__valence_facpositive")$estimate, size = 1, color = "red") + 
+  geom_line(aes(group = id), color = "dodgerblue2", size = .7, alpha = .5) + 
+  geom_jitter(width = .02, height = 0, size = 4,
+              shape = 21, colour = "navyblue", fill = "dodgerblue2", alpha = .95, stroke = 1)+
+  xlab(" ") + ylab("Valence Effect") + 
+  theme_few() +
+  theme(axis.text.x=element_text(size=12),
+        axis.text.y=element_text(size=12),
+        axis.title.y=element_text(size=12)) +
+  coord_flip()
+plotvalest2
+#ggsave(plotvalest2, file = "Fig3_plotvalest2.pdf", height = 4, width = 8)
+
+
+```
+## Between-subjects predictors of variation in effect of valence
+
+"What can explain why some participants respond faster to positive traits while others show no difference or even the reverse pattern?"
+
+This is a question of what variables account for the random slope variance ($\tau_{11}$) for valence.
+
+MNH: Fig 10 is essentially added variable plot for RE of valence
+MNH: Fig 9 shows how explaining variance in a random effect leads to less residual heterogeneity.
+
+```{r}
+
+# creating centered promotion 
+
+promdf <- subset(rndt, !duplicated(id))
+promdf2 <- dplyr::select(promdf, id, prom.v)
+promdf2$prom.c <- scale(promdf2$prom.v, center = T, scale = F)
+
+rndt <- merge(rndt, promdf2, by = "id")
+sd(rndt$prom.c)  
+```
+
+
+## Valence RT effect moderated by promotion
+```{r}
+
+modindiv1 <- lmer(logrt ~ valenceE*prom.c + (1 + valenceE| id),  data=rndt)
+summary(modindiv1)
+#confint(modindiv1)
+```
+
+## Compute Conditional Variance
+```{r conditional var}
+##### Compute Conditional Variance ######
+
+#Get interaction coefficient
+valXprom.coeff <- fixef(modindiv1)[4]
+
+#Get residual variance of valence random effect in model with promotion
+residvalvar <- VarCorr(modindiv1, comp="Variance")$id["valenceE", "valenceE"]
+
+#Calculate the implied total valence random effect variance
+#imptotalvalvar <- sd(subset(rndt, trial==1)$prom.c)^2*valXprom.coeff^2 + valvariance # should valvariance be residvalvar?
+imptotalvalvar <- valXprom.coeff^2*sd(promdf2$prom.c)^2 + residvalvar # should valvariance be residvalvar? # ^updated 181022 with better prom value
+```
+
+Variance Explained by Valence x Promotion interaction
+- 23% of variance explained by interaction effect
+
+```{r}
+
+## Variance Explained by Valence x Promotion interaction
+1-(residvalvar/imptotalvalvar)
+# 23% of variance explained by interaction effect
+
+```
+
+## Valence X Promotion Figures
+
+Save random effects and compute quantiles
+```{r promotion ranefs}
+
+promotionranef <- ranef(modindiv1)$id
+colnames(promotionranef) <- c("intercept_prom", "slope_prom")
+
+promotionranef$id <- as.numeric(row.names(promotionranef))
+
+#Create dataset with one line per person with prom.c score
+promotionranef <- merge(promotionranef, promdf2, by = 'id')
+#Add prom.c scores to file with valence slopes for prom.c model
+#promotionranef$prom.c 
+
+# Person-specific implied total valence effects for model controlling for promotion focus
+ranef.prom.pred.tot <- fixef(modindiv1)[2] + 
+                   fixef(modindiv1)[4]*promotionranef$prom.c +
+                  ranef(modindiv1)$id[,2]
+
+#Quantile for same
+ranef.prom.pred.tot.quant <- as.vector(quantile(ranef.prom.pred.tot, probs=c(.025, .975)))
+ranef.prom.pred.tot.pop1 <- c(mean(ranef.prom.pred.tot) + -1.96*sd(ranef.prom.pred.tot), 
+                             mean(ranef.prom.pred.tot) + 1.96*sd(ranef.prom.pred.tot))
+ranef.prom.pred.tot.pop <- c(mean(ranef.prom.pred.tot) + -1.96*sqrt(imptotalvalvar), 
+                             mean(ranef.prom.pred.tot) + 1.96*sqrt(imptotalvalvar))
+
+
+
+# population limits for model with promotion
+modindiv1_tidy <- tidy(modindiv1)
+ranef.valrt.prom.pop <- c(fixef(modindiv1)[2] + -1.96*subset(valrt_intslope_tidy, term == "sd__valence_facpositive")$estimate, fixef(modindiv1)[2] + 1.96*subset(valrt_intslope_tidy, term == "sd__valence_facpositive")$estimate)
+
+# Person-specific residual valence effects for model controlling for promotion focus
+ranef.prom.pred.resid <- fixef(modindiv1)[2] + ranef(modindiv1)$id[,2]
+
+#Quantile for same
+ranef.prom.pred.resid.quant <- as.vector(quantile(ranef.prom.pred.resid, probs=c(.025, .975)))
+```
+
+## Strip Plots showing Effect of Promotion on Heterogeneity
+
+Part 1
+```{r}
+
+### ggplot strip plot
+
+promotionranef_noprom <- data.frame(id = row.names(ranef(modindiv1)$id), rt = (ranef.prom.pred.tot)) 
+promotionranef_noprom$type <- "Predictions Removing Promotion Focus"
+
+
+promotionranef_prom <- data.frame(id = row.names(ranef(modindiv1)$id), rt = (fixef(modindiv1)[2] + ranef(modindiv1)$id[,2])) 
+promotionranef_prom$type <- "Predictions with Promotion Focus"
+
+
+promotion_stripplot <- ggplot(promotionranef_prom, aes(x=type, y=rt)) + 
+  theme(legend.position="none") +
+  xlab(" ") + ylab(" ") + ggtitle("Random Effects Predicted by Promotion Model\n(Residual Heterogeneity)")+
+  ylim(-.45, .15) +
+  geom_hline(yintercept = ranef.prom.pred.resid.quant[1], size = 1.5, color = "dodgerblue2", linetype="dashed") +
+  geom_hline(yintercept = ranef.prom.pred.resid.quant[2], size = 1.5, color = "dodgerblue2", linetype="dashed") +
+    geom_hline(yintercept = ranef.valrt.prom.pop[1], size = 1.5, color = "red", linetype="solid") +
+  geom_hline(yintercept = ranef.valrt.prom.pop[2], size = 1.5, color = "red", linetype="solid") +
+
+  geom_hline(yintercept = fixef(modindiv1)[2], size = 1.5, color = "black", linetype="solid") +
+    geom_jitter(width = 0.01, height = 0, size = 4,
+              shape = 21, colour = "navyblue", fill = "dodgerblue2", alpha = .95, stroke = 1) +
+  theme_few() +
+  theme(text = element_text(size=10))  + 
+  theme(axis.ticks.x = element_blank(), axis.text.y = element_blank()) + coord_flip() +
+    theme(plot.title = element_text(hjust = 0.5))
+promotion_stripplot
+
+```
+
+Part 2
+```{r}
+
+nopromotion_stripplot <- ggplot(promotionranef_noprom, aes(x=type, y=rt)) + 
+  theme(legend.position="none") +
+  xlab(" ") + ylab("Trait Valence Effect (logRT units)") + 
+  ggtitle("Implied Random Effects Predicted without Promotion\n(Implied Total Heterogeneity)")+
+  ylim(-.45, .15) +
+  geom_hline(yintercept = ranef.prom.pred.tot.quant[1], size = 1.5, color = "dodgerblue2", linetype="dashed") +
+  geom_hline(yintercept = ranef.prom.pred.tot.quant[2], size = 1.5, color = "dodgerblue2", linetype="dashed") +
+  
+    geom_hline(yintercept = ranef.prom.pred.tot.pop[1], size = 1.5, color = "red", linetype="solid") +
+  geom_hline(yintercept = ranef.prom.pred.tot.pop[2], size = 1.5, color = "red", linetype="solid") +
+  
+  geom_hline(yintercept = mean(ranef.prom.pred.tot), size = 1.5, color = "black", linetype="solid") +
+    geom_jitter(width = 0.01, height = 0, size = 4,
+              shape = 21, colour = "navyblue", fill = "dodgerblue2", alpha = .95, stroke = 1) +
+  theme_few() +
+  theme(text = element_text(size=10))  +
+  theme(axis.ticks.x = element_blank(), axis.text.y = element_blank()) + coord_flip() +
+    theme(plot.title = element_text(hjust = 0.5))
+nopromotion_stripplot
+
+
+promotion_stripplots <- plot_grid(promotion_stripplot, nopromotion_stripplot, nrow = 2)
+#ggsave(promotion_stripplots, file = "Fig9_promotion_stripplots.pdf", width = 8, height = 4)
+
+```
+
+
+# Going further with random slopes
+
+In my experience, people sometimes make the distinction of 'random intercept' versus 'random slope' models. Indeed, as we have seen, these models do differ in terms of allowing for heterogeneity in the per-cluster (per-person) average/intercept versus allowing for between-cluster heterogeneity in the association of a predictor with the outcome.
+
+Importantly, however, there is not a single 'random slope' model. Rather, the effect of any L1 predictor may differ from one L2 unit to the next. Or in the case of experimental data where we have many trials per subject, we can imagine that any within-subjects predictor -- either an experimental factor like incongruent/congruent condition in the flanker, or a continuous covariate like instantaneous heart rate -- may have heterogeneous effects on the outcome across people.
+
+As we scale up the number of random slopes in a model, estimation becomes much more difficult and we may see increasing evidence of model nonconvergence. We'll talk about how to address this when we come to model selection.
+
+## For next time: R-side versus G-side random effects
+
+## For next time: correlated versus uncorrelated random effects
+
+
