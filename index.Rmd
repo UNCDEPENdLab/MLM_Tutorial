@@ -42,7 +42,12 @@ If you already cloned a local copy of the repo, you can get the latest updates u
 ## 18Feb2021: MLM Intuitions, lme4 implementation, Random slopes
   - [MLM Intuitions, Within/Between and Fixed/Random](03_Foundations/03_Terms_L1L2.html)
   - [MLM implementation, Flanker Example](03_Foundations/03_Foundations.html)
-  - [Visualizing MLM representation of clustering](03_Foundations/vizrandomeffects.html)
   
 ## 4Mar2021: Effect heterogeneity
   - [Random slopes, Causal effect heterogeneity](04_Heterogeneity/04_Heterogeneity.html)
+
+## 18Mar2021: Random slopes, covariance structure, nesting
+  - [Understanding random slopes](05_RandomEffects_Moderation/05_RandomEffects.html)
+  - [Visualizing MLM representation of clustering](05_RandomEffects_Moderation/vizrandomeffects.html)
+  - [Latent disaggregation](https://psu-psychology.github.io/psy-597-SEM/15_multilevel/multilevel_sem.html#disaggregating-within--versus-between-cluster-effects)
+  - [Heterogeneous variance structures](https://quantdev.ssri.psu.edu/sites/qdev/files/ILD_Ch06_2017_MLMwithHeterogeneousVariance.html)
