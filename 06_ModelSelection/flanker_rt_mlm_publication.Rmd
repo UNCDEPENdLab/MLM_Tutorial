@@ -1,0 +1,712 @@
+---
+title: "Final Recent Probes RT Analyses"
+subtitle: "PD Inhibition Project"
+author: "Nate Hall and Michael Hallquist"
+date: "15 June 2020"
+output: 
+  html_document:
+    code_folding: show
+    df_print: default
+    mathjax: default
+    number_sections: no
+    theme: spacelab
+    toc: yes
+    toc_depth: 2
+    toc_float: no
+    fig_width: 9 
+    fig_height: 6 
+  pdf_document:
+    df_print: default
+    number_sections: no
+    toc: yes
+    toc_depth: 4
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+if (!require(pacman)) { install.packages("pacman"); library(pacman) }
+p_load(car, nlme, lme4, readr, tidyverse, emmeans, cowplot, bbmle, broom, knitr, kableExtra, flextable, stargazer, lmerTest)
+knitr::opts_chunk$set(echo = TRUE) #print code by default
+#knitr::opts_chunk$set(cache.path = "../../Outputs/flanker_mlms/")
+#options(digits=2)
+options(scipen = 2, digits = 3)
+options(width = 140)
+emm_options(disable.pbkrtest = TRUE, lmerTest.limit=2e4) #disable KR and estimate Satterthwaite
+
+#preprocessed in flanker_mlm.Rmd
+load(file="../data/flanker_for_traits.RData")
+flanker <- flanker %>% filter(correct==1 & exclude < 3) %>% #least restrictive exclusions
+  mutate(prev_rt=prev_rt - mean(prev_rt, na.rm=TRUE),
+         prev_rt_z = as.vector(scale(prev_rt))) #z-score rt to put parameter estimates on smaller scale
+
+render_aictab <- function(minfo, ...) {
+  mc <- match.call(expand.dots = TRUE)
+  mlist <- list(...)
+  
+  #N.B. AICtab fails if you try to assign names to the list names(mlist) <- ...
+  mnames <- sapply(3:length(mc), function(x) { as.character(mc[[x]])})
+  mdf <- do.call(rbind, minfo) %>% as.data.frame() %>% rownames_to_column("model")
+  adf <- AICtab(mlist, sort=FALSE, delta=TRUE, weights=TRUE, logLik=TRUE, base=TRUE, mnames=mnames) %>% 
+    as.data.frame() %>% rownames_to_column("model") %>% dplyr::select(-dLogLik)
+
+  res <- mdf %>% left_join(adf, by="model")
+  return(res)
+}
+
+flextb_vif <- function(m) {
+  flextable(data.frame(vif=car::vif(m)) %>% rownames_to_column("Predictor")) %>% autofit()
+}
+
+check_singularity <- function(lmerobj) {
+  tt <- getME(lmerobj,"theta") #RE estimates
+  ll <- getME(lmerobj,"lower") #lower bound on estimate
+  
+  #look for RE estimates that are very small (near zero) and the lower bound encompasses 0
+  low_re <- tt[ll==0 & tt < 1e-2]
+  return(low_re)
+  
+  #eventually, would be nice to provide functionality to drop these from model and refit automatically
+}
+
+minfo <- list() #used for building model summary table
+```
+
+This file contains final MLMs for reaction times on the flanker task for the PD Inhibition DDM project.
+
+Note: I have adopted the common convention of only analyzing RTs for correct responses. This assumes that whatever process gives rise to the RT for an incorrect response is not commensurable. The alternative would be to allow for `correct` to enter into the model as a predict of the current trial's RT. This could support moderation analyses -- for example, whether error RTs are faster in the mostly congruent condition for incongruent trials. The downside is all of the ensuing multi-way interactions, many of which are not of central interest.
+
+N.B. For the AIC comparisons to be valid, we need to use method='ML' throughout. Once we have a winning model,
+or one where the parameters matter, re-estimate with REML. `update(mm, method='REML')`
+
+To reduce the number of models, I don't consider block diagonal matrices for L2 random effects. This is achieved with `pdDiag()` and basically estimates a unique variance component for each level of a factor. But the fits of these models are extremely close to the more conventional block within id `id/block` parameterization for random effects. Given that the latter is much more conventional, let's stick with that when we want to check for heterogeneity in L2 by condition.
+
+# LME approach
+
+These models permit heterogeneous L1 residual variability
+
+## m1: design effects, random intercept of subject
+
+```{r m1, cache=TRUE}
+minfo[["m1"]] <- c(fixed="Congruency, Block", l1="Homogeneous", l2="Subject: Intercept")
+m1 <- lme(rt_inv ~ cond*block, 
+          random = ~ 1 | id,
+          na.action = na.exclude, 
+          data = flanker, method='ML')
+
+m1_reml <- update(m1, method='REML')
+```
+
+```{r}
+flextable(car::Anova(m1, type=3)) %>% autofit()
+
+#Get model-predicted means in original RT scale. Force back onto original RT using custom function
+rg <- update(ref_grid(m1_reml), tran=list(linkinv=function(x) { -1000/x }, mu.eta=function(x) { -1000/x }), predict.type="response")
+res_trans <- emmeans(rg, ~cond|block)
+
+flextable(as.data.frame(res_trans)) %>% colformat_num(j=c("response", "SE", "lower.CL", "upper.CL"), digits=2) %>% autofit()
+```
+
+## m2: design effects, allow for L2 random intercept to vary by block
+
+Use nested RE specification.
+
+```{r m2, cache=TRUE}
+minfo[["m2"]] <- c(fixed="Congruency, Block", l1="Homogeneous", l2="Block Within Subject: Intercept")
+m2 <- lme(rt_inv ~ cond*block,
+          random=~1|id/block,
+          na.action = na.exclude,
+          data = flanker, method='ML')
+```
+
+```{r}
+flextb_vif(m2)
+flextable(car::Anova(m2, type=3)) %>% autofit()
+```
+
+## m3: design effects, allow for L1 residual variance to vary by block
+
+```{r m3, cache=TRUE}
+minfo[["m3"]] <- c(fixed="Congruency, Block", l1="Per Block", l2="Block within subject: Intercept")
+m3 <- lme(rt_inv ~ cond*block,
+          random=~1|id/block,
+          weights=varIdent(form=~1|block),
+          na.action = na.exclude,
+          data = flanker, method='ML')
+summary(m3)
+```
+
+```{r, results='asis'}
+#stargazer(m3, type="html")
+flextable(car::Anova(m3, type=3)) %>% autofit()
+
+flextable(render_aictab(minfo=minfo, m1, m2, m3)) %>% autofit()
+```
+
+## m4: Allow L1 residual variability to depend on both condition and block
+
+```{r m4, cache=TRUE}
+minfo[["m4"]] <- c(fixed="Congruency, Block", l1="Per Block and Condition", l2="Block within subject: Intercept")
+m4 <- lme(rt_inv ~ cond*block,
+          random=~1|id/block,
+          weights=varIdent(form=~1|block*cond),
+          na.action = na.exclude,
+          data = flanker, method='ML')
+summary(m4)
+
+flextable(render_aictab(minfo=minfo, m1, m2, m3, m4)) %>% autofit()
+```
+
+Interim conclusions about random effects structure:
+
+1. Allow for per-block random intercept (nested random effect)
+2. Allow for L1 residual variance to vary by block and trial condition
+
+But!! Obtaining p-values and denominator degrees of freedom is a somewhat tortured process because neither Satterthwaite nor Kenward-Roger corrections for degrees of freedom are provided. Moreover, we don't have any conceptual interest in L1 heterogeneity. Likewise, when we switch to `glmer` for accuracy, we no longer have the option for heterogeneous L1 variances since `nlme` doesn't provide a binary logistic model as far as I know.
+
+Thus, switch to `lmer()` since the best-fitting model (m30) depends primarily on nested L2 random effects. This makes it easier to switch to Mplus, too.
+
+# LMER-based modeling
+
+## m1: design effects, random intercept of subject
+
+```{r}
+minfo <- list() #re-initialize now that we're eliminating l1 heterogeneity
+```
+
+```{r m1_lmer, cache=TRUE}
+minfo[["m1"]] <- c(fixed="Congruency, Block", l2="Subject: Intercept")
+m1 <- lmer(rt_inv ~ cond*block + (1|id),
+          na.action = na.exclude, 
+          data = flanker, REML=FALSE)
+m1_reml <- update(m1, REML=TRUE)
+```
+
+```{r}
+flextable(anova(m1) %>% rownames_to_column("Effect")) %>% autofit() #lmerTest reports Satterthwaite degrees of freedom
+#flextable(car::Anova(m1, type=3)) %>% autofit()
+
+#Get model-predicted means in original RT scale. Force back onto original RT using custom function
+rg <- update(ref_grid(m1_reml), tran=list(linkinv=function(x) { -1000/x }, mu.eta=function(x) { -1000/x }), predict.type="response")
+res_trans <- emmeans(rg, ~cond|block, lmer.df = "satterthwaite")
+
+# emmeans(m1_reml, ~cond|block, lmer.df = "satterthwaite") #in inverse units
+
+flextable(as.data.frame(res_trans)) %>% 
+  colformat_num(j=c("response", "SE", "lower.CL", "upper.CL"), digits=2) %>% 
+  autofit()
+
+```
+
+## m2: design effects, allow for L2 random intercept to vary by block
+
+Use nested RE specification.
+
+```{r m2_lmer, cache=TRUE}
+minfo[["m2"]] <- c(fixed="Congruency, Block", l2="Block within subject: Intercept")
+m2 <- lmer(rt_inv ~ cond*block + (1|id/block),
+          na.action = na.exclude,
+          data = flanker, REML=FALSE)
+m2_reml <- update(m2, REML=TRUE)
+```
+
+```{r}
+flextable(anova(m2) %>% rownames_to_column("Effect")) %>% autofit()
+
+#car::Anova(m2, type=3)
+flextable(render_aictab(minfo=minfo, m1, m2)) %>% autofit()
+
+rg <- update(ref_grid(m2_reml), 
+             tran=list(linkinv=function(x) { -1000/x }, mu.eta=function(x) { -1000/x }), 
+             predict.type="response")
+
+res_trans <- emmeans(rg, ~cond|block, lmer.df = "satterthwaite")
+pairs(res_trans)
+# emmeans(m1_reml, ~cond|block, lmer.df = "satterthwaite") #in inverse units
+
+flextable(as.data.frame(res_trans)) %>% 
+  colformat_num(j=c("response", "SE", "lower.CL", "upper.CL"), digits=2) %>% 
+  autofit()
+
+pairs(emmeans(m2_reml, ~cond|block))
+pairs(emmeans(m2_reml, ~ cond * block), simple="each")
+
+pairs(pairs(emmeans(m2_reml, ~cond|block)), by=NULL) #difference of differences
+```
+
+## m3: Add trial_z as fixed
+
+```{r m3_lmer, cache=TRUE}
+minfo[["m3"]] <- c(fixed="Congruency, Block, Trial", l2="Block within subject: Intercept")
+m3 <- lmer(rt_inv ~ cond*block + trial_z + (1|id/block),
+          na.action = na.exclude,
+          data = flanker, REML=FALSE)
+```
+
+## m4: Add trial_z as random, too, but only at subject level, not block-specific
+
+```{r m4_lmer, cache=TRUE}
+minfo[["m4"]] <- c(fixed="Congruency, Block, Trial", l2="Block within subject:Intercept\nSubject: Trial")
+m4 <- lmer(rt_inv ~ cond*block + trial_z + (1 + trial_z | id) + (1 | id:block),
+          na.action = na.exclude,
+          data = flanker, REML=FALSE)
+```
+
+## m5: Add trial_z as random both per subject and block
+
+```{r m5_lmer, cache=TRUE}
+minfo[["m5"]] <- c(fixed="Congruency, Block, Trial", l2="Block within subject: Intercept, Trial")
+m5 <- lmer(rt_inv ~ cond*block + trial_z + (1 + trial_z | id/block),
+          na.action = na.exclude,
+          data = flanker, REML=FALSE)
+```
+
+```{r}
+summary(m5)
+flextable(render_aictab(minfo=minfo, m1, m2, m3, m4, m5)) %>% autofit()
+```
+
+## m6: Add trial x block interaction as fixed
+
+```{r}
+minfo[["m6"]] <- c(
+  fixed="Congruency, Block, Congruency x Block, Trial, Block x Trial", 
+  l2="Block within subject: Intercept, Trial")
+```
+
+```{r m6_lmer, cache=TRUE}
+m6 <- lmer(rt_inv ~ cond*block + trial_z*block + (1 + trial_z | id/block),
+          na.action = na.exclude,
+          data = flanker, REML=FALSE)
+```
+
+```{r}
+flextable(render_aictab(minfo=minfo, m1, m2, m3, m4, m5, m6)) %>% autofit()
+```
+
+## m7: Trial within run (run_trial) as fixed
+
+trial x block is not significant, drop from consideration
+
+```{r}
+minfo[["m7"]] <- c(
+  fixed="Congruency, Block, Congruency x Block, Trial, Run Trial", 
+  l2="Block within subject: Intercept, Trial")
+```
+
+```{r m7_lmer, cache=TRUE}
+m7 <- lmer(rt_inv ~ cond*block + trial_z + run_trial_z + (1 + trial_z | id/block),
+          na.action = na.exclude,
+          data = flanker, REML=FALSE)
+```
+
+```{r}
+flextable(render_aictab(minfo=minfo, m1, m2, m3, m4, m5, m6, m7)) %>% autofit()
+```
+
+## m8: Add run trial as random at subject level only
+
+```{r}
+minfo[["m8"]] <- c(
+  fixed="Congruency, Block, Trial, Run Trial", 
+  l2="Block within subject: Intercept, Trial\nSubject: Run Trial")
+```
+
+```{r m8_lmer, cache=TRUE}
+m8 <- lmer(rt_inv ~ cond*block + trial_z + run_trial_z + 
+             (1 + trial_z + run_trial_z | id) + 
+             (1 + trial_z | id:block),
+          na.action = na.exclude, control=lmerControl(optCtrl=list(maxfun=2e4)),
+          data = flanker, REML=FALSE)
+```
+
+```{r}
+flextb_vif(m8)
+
+flextable(render_aictab(minfo=minfo, m1, m2, m3, m4, m5, m6, m7, m8)) %>% autofit()
+```
+
+## m9: Add run trial as random at subject and block level
+
+Indeed, we see a big boost allowing run_trial to be random at subject and block level
+
+```{r}
+minfo[["m9"]] <- c(
+  fixed="Congruency, Block, Congruency x Block, Trial, Run Trial", 
+  l2="Block within subject:Intercept, Trial, Run Trial")
+```
+
+```{r m9_lmer, cache=TRUE}
+m9 <- lmer(rt_inv ~ cond*block + trial_z + run_trial_z + 
+             (1 + trial_z + run_trial_z | id) + 
+             (1 + trial_z + run_trial_z | id:block),
+          na.action = na.exclude,
+          data = flanker, REML=FALSE)
+
+if (isSingular(m9)) { print(check_singularity(m9)) }
+```
+
+But! The singularity check reveals the run_trial_z RE at id level is zero. This suggests that the boost we're getting in fit has to do with the correlation between run_trial_z and other REs at the id level.
+
+If we drop run_trial_z at the id level, fit is definitely worse (m8 vs. m9). Thus, tolerate the singularity for now.
+
+```{r}
+flextb_vif(m9)
+
+flextable(render_aictab(minfo=minfo, m1, m2, m3, m4, m5, m6, m7, m8, m9)) %>% autofit()
+```
+
+## m10: Add prev_rt_z as fixed effect
+
+Using the z-scored variant to get parameter estimates on a similar scale, which can speed up estimation and occasionally avoid convergence problems.
+
+Gargantuan improvement for prev_rt_z. Also note that this knocks out the fixed effect of run_trial_z. Drop that moving forward.
+
+```{r}
+minfo[["m10"]] <- c(
+  fixed="Congruency, Block, Congruency x Block, Trial, Run Trial, Previous RT", 
+  l2="Block within subject: Intercept, Trial, Run Trial")
+```
+
+```{r m10_lmer, cache=TRUE}
+m10 <- lmer(rt_inv ~ cond*block + trial_z + run_trial_z + prev_rt_z + 
+              (1 + trial_z + run_trial_z | id/block),
+          na.action = na.exclude,
+          data = flanker, REML=FALSE)
+
+if (isSingular(m10)) { print(check_singularity(m10)) }
+```
+
+Same problem as m9: the run_trial_z variance estimate is zero.
+
+```{r}
+summary(m10)
+```
+
+```{r}
+flextb_vif(m10)
+
+flextable(render_aictab(minfo=minfo, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10)) %>% autofit()
+```
+
+## m11: Allow prev_rt_z x run_trial interaction
+
+Yes, there is an interaction (N.B. mean centering of prev_rt is essential to avoid collinearity).
+
+```{r}
+minfo[["m11"]] <- c(
+  fixed="Congruency, Block, Congruency x Block, Trial,\nRun Trial, Previous RT, Run Trial x Previous RT",
+  l2="Block within subject: Intercept, Trial, Run Trial")
+```
+
+```{r m11_lmer, cache=TRUE, include=TRUE, results='asis'}
+m11 <- lmer(rt_inv ~ cond*block + trial_z + run_trial_z * prev_rt_z +
+              (1 + trial_z + run_trial_z | id/block),
+          na.action = na.exclude,
+          data = flanker, REML=FALSE)
+
+if (isSingular(m11)) { print(check_singularity(m11)) }
+```
+
+Continued singularity due to the zero variance in run_trial_z at id level.
+
+```{r}
+flextb_vif(m11)
+
+flextable(render_aictab(minfo=minfo, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11)) %>% autofit()
+```
+
+## m12: Add prev_rt_z as random
+
+```{r}
+minfo[["m12"]] <- c(
+  fixed="Congruency, Block, Congruency x Block, Trial, Previous RT", 
+  l2="Block within subject: Intercept, Trial, Run Trial, Previous RT")
+```
+
+```{r m12_lmer, cache=TRUE}
+m12 <- lmer(rt_inv ~ cond*block + trial_z + prev_rt_z + 
+              (1 + trial_z + run_trial_z + prev_rt_z | id/block),
+          na.action = na.exclude, control=lmerControl(optCtrl=list(maxfun=2e4)), #bump up iterations
+          data = flanker, REML=FALSE)
+
+if (isSingular(m12)) { print(check_singularity(m12)) }
+```
+
+```{r}
+flextb_vif(m12)
+
+flextable(render_aictab(minfo=minfo, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12)) %>% autofit()
+```
+
+## m13: Add condition as random at subject level
+
+```{r}
+minfo[["m13"]] <- c(
+  fixed="Congruency, Block, Congruency x Block, Trial, Previous RT", 
+  l2="Block within subject: Intercept, Trial, Run Trial, Previous RT\nSubject: Congruency")
+```
+
+```{r m13_lmer, cache=TRUE, include=TRUE, results='asis'}
+m13 <- lmer(rt_inv ~ cond*block + trial_z + prev_rt_z + 
+              (1 + trial_z + run_trial_z + prev_rt_z + cond | id) +
+              (1 + trial_z + run_trial_z + prev_rt_z | id:block),
+          na.action = na.exclude, control=lmerControl(optCtrl=list(maxfun=2e4)), #bump up iterations
+          data = flanker, REML=FALSE)
+
+if (isSingular(m13)) { print(check_singularity(m13)) }
+```
+
+```{r}
+flextb_vif(m13)
+
+flextable(render_aictab(minfo=minfo, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13)) %>% autofit()
+```
+
+## m14: Add condition as random at subject and block level
+
+No improvement compared to m13. Keep condition at id level only.
+
+```{r}
+minfo[["m14"]] <- c(
+  fixed="Congruency, Block, Congruency x Block, Trial, Previous RT", 
+  l2="Block within subject: Intercept, Trial, Run Trial, Previous RT, Congruency")
+
+```
+
+```{r m14_lmer, cache=TRUE}
+m14 <- lmer(rt_inv ~ cond*block + trial_z + prev_rt_z + 
+              (1 + trial_z + run_trial_z + prev_rt_z + cond | id) + 
+              (1 + trial_z + run_trial_z + prev_rt_z + cond | id:block),
+          na.action = na.exclude, control=lmerControl(optCtrl=list(maxfun=2e4)), #bump up iterations
+          data = flanker, REML=FALSE)
+
+if (isSingular(m14)) { print(check_singularity(m14)) }
+```
+
+```{r}
+flextb_vif(m14)
+
+flextable(render_aictab(minfo=minfo, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14)) %>% autofit()
+```
+
+## m15: add prev_error as fixed
+
+Post-error slowing? Indeed
+
+```{r}
+minfo[["m15"]] <- c(
+  fixed="Congruency, Block, Congruency x Block,\nTrial, Previous RT, Previous Error", 
+  l2="Block within subject: Intercept, Trial, Run Trial, Previous RT\nSubject: Congruency")
+```
+
+```{r m15_lmer, cache=TRUE}
+m15 <- lmer(rt_inv ~ cond*block + trial_z + prev_rt_z + prev_error +
+              (1 + trial_z + run_trial_z + prev_rt_z + cond | id) +
+              (1 + trial_z + run_trial_z + prev_rt_z | id:block),
+          na.action = na.exclude, control=lmerControl(optCtrl=list(maxfun=2e4)), #bump up iterations
+          data = flanker, REML=FALSE)
+
+if (isSingular(m15)) { print(check_singularity(m15)) }
+```
+
+```{r}
+flextb_vif(m15)
+
+flextable(render_aictab(minfo=minfo, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15)) %>% autofit()
+```
+
+## m16: add prev_error as random at ID level
+
+```{r}
+minfo[["m16"]] <- c(
+  fixed="Congruency, Block, Congruency x Block,\nTrial, Previous RT, Previous Error", 
+  l2="Block within subject: Intercept, Trial, Run Trial, Previous RT\nSubject: Congruency, Previous Error")
+```
+
+```{r m16_lmer, cache=TRUE, include=TRUE, results='asis'}
+m16 <- lmer(rt_inv ~ cond*block + trial_z + prev_rt_z + prev_error +
+              (1 + trial_z + run_trial_z + prev_rt_z + cond + prev_error | id) +
+              (1 + trial_z + run_trial_z + prev_rt_z | id:block),
+          na.action = na.exclude, control=lmerControl(optCtrl=list(maxfun=2e4)), #bump up iterations
+          data = flanker, REML=FALSE) # control=lmerControl(optimizer = "nlminbwrap"))
+
+if (isSingular(m16)) { print(check_singularity(m16)) }
+```
+
+```{r}
+flextb_vif(m16)
+
+flextable(render_aictab(minfo=minfo, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16)) %>% autofit()
+```
+
+## m17: remove run_trial_z from id level
+
+We see a modest boost for eliminating run_trial_z from id level, which is more parsimonious.
+
+My notation for the table doesn't really accommodate this... 
+
+```{r}
+minfo[["m17"]] <- c(
+  fixed="Congruency, Block, Congruency x Block,\nTrial, Previous RT, Previous Error", 
+  l2="Block within subject: Intercept, Trial, Run Trial, Previous RT\nSubject: Congruency, Previous Error")
+```
+
+```{r m17_lmer, cache=TRUE}
+m17 <- lmer(rt_inv ~ cond*block + trial_z + prev_rt_z + prev_error +
+              (1 + trial_z + prev_rt_z + cond + prev_error | id) +
+              (1 + trial_z + run_trial_z + prev_rt_z | id:block),
+          na.action = na.exclude, control=lmerControl(optCtrl=list(maxfun=2e4)), #bump up iterations
+          data = flanker, REML=FALSE) # control=lmerControl(optimizer = "nlminbwrap"))
+
+if (isSingular(m17)) { print(check_singularity(m17)) }
+```
+
+```{r}
+flextb_vif(m17)
+
+flextable(render_aictab(minfo=minfo, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17)) %>%
+  autofit()
+```
+
+```{r fplot, cache=TRUE, fig=TRUE}
+library(sjPlot)
+gg <- plot_model(m17, type="std", show.p=TRUE, ci.lvl=.95, dot.size=5, line.size=2) + 
+  ylim(-0.1, 0.3) + theme_bw(base_size=18) +
+  geom_hline(yintercept = 0, size=1.2) + 
+  theme(panel.grid.major.y=element_blank()) +
+  ggtitle("") + ylab("Standardized regression coefficient")
+plot(gg)
+ggsave(gg, filename="Flanker_RT_Params.pdf", width=9, height=9, useDingbats=FALSE)
+```
+
+## m18: Allow for prev_rt_z x prev_error interaction
+
+Not a slam dunk, but a small interaction. Omit for simplicity.
+
+```{r}
+minfo[["m18"]] <- c(
+  fixed="Congruency, Block, Trial, Congruency x Trial, Previous RT,\nPrevious Error, Previous RT x Previous Error", 
+  l2="Block within subject: Intercept, Trial, Run Trial, Previous RT\nSubject: Congruency, Previous Error")
+```
+
+```{r m18_lmer, cache=TRUE}
+m18 <- lmer(rt_inv ~ cond*block + trial_z + prev_rt_z * prev_error +
+              (1 + trial_z + prev_rt_z + cond + prev_error | id) +
+              (1 + trial_z + run_trial_z + prev_rt_z | id:block),
+          na.action = na.exclude, control=lmerControl(optCtrl=list(maxfun=2e4)), #bump up iterations
+          data = flanker, REML=FALSE) # control=lmerControl(optimizer = "nlminbwrap"))
+
+if (isSingular(m18)) { print(check_singularity(m18)) }
+```
+
+```{r}
+flextb_vif(m18)
+
+car::Anova(m18, type=3)
+
+flextable(render_aictab(minfo=minfo, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18)) %>%
+  autofit()
+```
+
+## m19: try to simplify random effect structure further: Drop trial_z within block
+
+Eliminate small variance components for the trial_z id:block piece
+
+```{r}
+minfo[["m19"]] <- c(
+  fixed="Congruency, Block, Congruency x Block,\nTrial, Previous RT, Previous Error", 
+  l2="Block within subject:Intercept, Run Trial, Previous RT\nSubject: Congruency, Trial, Previous Error")
+```
+
+```{r m19_lmer, cache=TRUE, include=TRUE, results='asis'}
+m19 <- lmer(rt_inv ~ cond*block + trial_z + prev_rt_z + prev_error +
+              (1 + trial_z + prev_rt_z + cond + prev_error | id) +
+              (1 + run_trial_z + prev_rt_z | id:block),
+          na.action = na.exclude, control=lmerControl(optCtrl=list(maxfun=2e4)), #bump up iterations
+          data = flanker, REML=FALSE) # control=lmerControl(optimizer = "nlminbwrap"))
+
+if (isSingular(m19)) { print(check_singularity(m19)) }
+```
+
+```{r}
+flextb_vif(m19)
+
+#car::Anova(m19, type=3)
+
+flextable(render_aictab(minfo=minfo, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, 
+                        m13, m14, m15, m16, m17, m18, m19)) %>% autofit()
+```
+
+## m20: drop run_trial_z random effect
+
+```{r}
+minfo[["m20"]] <- c(
+  fixed="Congruency, Block, Congruency x Block,\nTrial, Previous RT, Previous Error", 
+  l2="Block within subject: Intercept, Trial, Previous RT\nSubject: Congruency, Previous Error")
+```
+
+```{r m20_lmer, cache=TRUE}
+m20 <- lmer(rt_inv ~ cond*block + trial_z + prev_rt_z + prev_error +
+              (1 + trial_z + prev_rt_z + cond + prev_error | id) +
+              (1 + trial_z + prev_rt_z | id:block),
+          na.action = na.exclude, control=lmerControl(optCtrl=list(maxfun=2e4)), #bump up iterations
+          data = flanker, REML=FALSE) # control=lmerControl(optimizer = "nlminbwrap"))
+
+if (isSingular(m20)) { print(check_singularity(m20)) }
+```
+
+```{r}
+flextb_vif(m20) 
+#car::Anova(m20, type=3)
+
+flextable(render_aictab(minfo=minfo, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, 
+                        m12, m13, m14, m15, m16, m17, m18, m19, m20)) %>% autofit()
+```
+
+## m21: drop intercept at id/block
+
+```{r}
+minfo[["m21"]] <- c(
+  fixed="Congruency, Block, Congruency x Block,\nTrial, Previous RT, Previous Error", 
+  l2="Block within subject:Previous RT, Previous Error\nSubject: Congruency")
+```
+
+```{r m21_lmer, cache=TRUE, include=TRUE, results='asis'}
+m21 <- lmer(rt_inv ~ cond*block + trial_z + prev_rt_z + prev_error +
+              (1 + trial_z + prev_rt_z + cond + prev_error | id) +
+              (0 + trial_z + prev_rt_z | id:block),
+          na.action = na.exclude, control=lmerControl(optCtrl=list(maxfun=2e4)), #bump up iterations
+          data = flanker, REML=FALSE) # control=lmerControl(optimizer = "nlminbwrap"))
+```
+
+```{r}
+flextb_vif(m21)
+#car::Anova(m21, type=3)
+
+flextable(render_aictab(minfo=minfo, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12,
+                        m13, m14, m15, m16, m17, m18, m19, m20, m21)) %>% autofit()
+```
+
+In short, dropping any of the id:block random effects (m19-m21) substantially worsens fit.
+
+## final model table
+
+m17 is the winner -- keep 1-17 for supp
+
+```{r}
+flextable(render_aictab(minfo=minfo[1:17], m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, 
+                        m13, m14, m15, m16, m17)) %>% autofit()
+```
+
+```{r}
+summary(m17)
+```
+
+```{r, eval=FALSE}
+#checking diagnostics: does the lower bound on the random effect encompass zero (singularity)
+#https://rstudio-pubs-static.s3.amazonaws.com/33653_57fc7b8e5d484c909b615d8633c01d51.html
+tt <- getME(m1_sc,"theta")
+ll <- getME(m1_sc,"lower")
+min(tt[ll==0])
+```

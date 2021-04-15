@@ -1,0 +1,243 @@
+---
+title: "Model comparison and evidence"
+subtitle: "MLM Workshop Meeting 6"
+author: "Michael Hallquist"
+date: "15 April 2021"
+output:
+  html_document:
+    code_folding: hide
+    df_print: kable
+    mathjax: default
+    number_sections: yes
+    theme: spacelab
+    toc: yes
+    toc_depth: 2
+    fig_width: 9 
+    fig_height: 6 
+  pdf_document:
+    code_folding: hide
+    df_print: kable
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+---
+<style type="text/css">
+body{ font-size: 24px; max-width: 1600px; margin: auto; padding: 1em; }
+code.r{ font-size: 20px; }
+p { padding-top: 8px; padding-bottom: 8px; }
+pre { font-size: 16px; }
+ol li:last-child { margin-bottom: 1.5em; }
+ol li:first-child { margin-top: 1.5em; }
+</style>
+
+
+```{r setup, include=FALSE}
+if (!require(pacman)) { install.packages("pacman"); library(pacman) }
+p_load(knitr, MASS, tidyverse, viridis, modelr, psych, lme4, AICcmodavg)
+knitr::opts_chunk$set(echo = TRUE) #print code by default
+options(digits=3)
+set.seed(15092) #to make simulated data the same across computers
+flanker <- readRDS(file="../data/flanker_jop.rds") %>% arrange(id, trial)
+flanker <- flanker %>% mutate(rt_log10 = log10(rt), rt_inv = -1000/rt)
+
+```
+
+# Model evidence, K-L distance
+
+"All models are wrong but some are useful" - *George Box*
+
+Conceptually, model A is *nested* in model B if model A contains a subset of the parameters in model B. For example, if we have an MLM with 10 fixed-effect predictors ($X_1 - X_{10}$) and then we add an additional predictor $X_{11}$ as a fixed effect, then the *restricted* model (lacking the new predictor) is nested in the full model. One way to think of this is that in the restricted model A, the effect of $X_{11}$ is fixed to be zero -- it's like the predictor is there but has no ability to exert influence on the outcome.
+
+Importantly, in univariate MLM (one outcome), when we talk about comparing models in terms of their evidence, the dependent variable *must* be the same for all models being compared. If we switch from modeling reaction times to modeling choices among alternative actions, the dependent variable has changed! This means the likelihood function will have changed, too, and we can only compared alternative models of a given outcome to each other.
+
+A more subtle but perhaps even more crucial distinction is that the number of observations must be the same between the models. For example, if one model of a given outcome has 10,005 observations, while the next model (of the *same* outcome) has 9,889, then the likelihood functions are not the same and the models cannot be compared directly! Why might this happen? The most common source is that there is missingness on the predictor side that leads to listwise deletion.
+
+For example, consider model A:
+
+```
+mA <- lmer(rt ~ rt_prev + sex + age + (1|id), data=df, na.action=na.omit)
+length(fitted(mA))
+> 10005
+```
+
+The number of predicted values ($\hat{Y}$) is 10,005. Let's add another precictor, the level of extraversion.
+
+```
+mB <- lmer(rt ~ rt_prev + sex + age + extraversion + (1|id), data=df, na.action=na.omit)
+length(fitted(mB))
+> 9889
+length(na.omit(df$extraversion))
+> 9889
+```
+
+As you can see, the number of predicted values has dropped to 9889 and this matches the number of non-missing values of extraversion! The challenge is that `mA` and `mB` can no longer be compared. What to do?
+
+The simplest solution is to filter the `data.frame` to have the number of observations in the most complex (i.e., most predictors) model so that simpler models don't gain observations. Note that this problem is common when adding lagged predictors into a model since $t-1$ will be missing on trial 1 and so on.
+
+Another common source of error in model comparison occurs when one model transforms the dependent variable while another does not. For example, in the flanker data, can we compare a model of inverse RT ($-1000/RT$) to the untransformed $RT$?
+
+```{r}
+minv <- lmer(rt_inv ~ 1 + (1|id), flanker)
+mun <- lmer(rt~ 1 + (1|id), flanker)
+anova(minv, mun)
+```
+
+As you see, R will run this comparison for us (be afraid!), but we would come to a completely erroneous conclusion, namely that the inverse-RT model fits the data many orders of magnitude better than the untransformed model. This is not a fair comparison because the scale of the outcome variable is not the same in the two models and, thus, the likelihood is not the same! I have reviewed a number of papers over the years where authors conclude that a model with a transformed outcome (often sqrt or log) fits the data far better than the untransformed one based on AIC or LRTs. Although we can perhaps compare how well a transformation normalizes a distribution, we cannot compare models of different transformations in terms of their likelihoods (i.e., the likelihood of the data given the model and parameters).
+
+Having established whether two models are nested, we can move onto the important consideration of model evidence. In the case of equivalent models, relative evidence cannot be based on global fit given that both models will have the same likelihood and same number of parameters. But in the case of nested models, we would like to be able to make a statement such as, "Model A fits the data significantly better than Model B, *p* < .01," or, "The evidence for Model A is ten times stronger than the evidence for Model B." 
+
+## Binary judgments: likelihood ratios and Vuong tests
+
+The first statement concerns a *binary* judgment about model fit -- that is, we are interested in testing the null hypothesis that two models fit the data equally well. The most common approach for making binary judgments in MLM is the likelihood ratio test (LRT). In the LRT approach, we can compare two *nested* models (using the `anova` function in `lme4`) to test the null hypothesis that one model (with fewer parameters -- the nested model) fit the data equally well. If we reject this null (typically $p < .05$), then we conclude that the nested model fits significantly *worse* than the full model.
+
+Let's return to the flanker data, comparing the unconditional means model (intercept-only) and the model that has condition (incongruent versus congruent) and block (mostly incongruent versus mostly congruent) as fixed-effects predictors.
+
+```{r}
+m1 <- lmer(rt_inv ~ 1 + (1|id), flanker)
+summary(m1)
+
+m2 <- lmer(rt_inv ~ block*cond + (1|id), flanker)
+summary(m2)
+
+anova(m1, m2)
+```
+
+We see that adding condition and block leads to a highly significant LRT, $\chi^2 (3) = 441, p < 10^{-15})$, indicating that the addition of block, condition, and their interaction improves model fit. Also note that `lme4` refits the models using maximum likelihood (ML) instead of restricted maximum likelihood (REML). REML is good for parameter estimation, but bad for model comparison because it does not provide an accurate estimate of the model likelihood (sometimes abbreviated LL or logLik to refer to the log of the likelihood).
+
+## Relative evidence and Kullback-Leibler (K-L) distance
+
+This, however, is a *binary* judgment (is fit better or not?). What about the evidence in favor of the model that has `block*cond` versus the unconditional means model? This is a dimensional question and could be framed in terms of the probability that one model is the best in the set. For example, is the evidence in factor of the `block*cond` model five times greater than the unconditional means model?
+
+To make judgments about *relative* evidence, we need a measure of how well one model fits compared to another (or many others).
+
+The goal of most statistical modeling is to approximate the key factors that generated our empirical data. The data generation processes are usually complex and largely unknown, so our models will almost always be deficient in many ways. Nevertheless, we may wish to know how close one model is to the unknown truth relative to a comparator model. This is the substance of model selection theory -- i.e., how one selects among models based on relative evidence.
+
+Kullback-Leibler information quantifies the information lost when lost when a simple model, *g* is used to approximate the true model, *f*:
+
+$$
+I(f,g) = \int{f(x) \textrm{log} \left( \frac{f(x)}{g(x|\theta)} \right) dx}
+$$
+This can also be thought of as the distance between our model, *g* and the population (unknown) model, *f*.
+
+![](K-L_Distance.png)
+
+In the simplest case, we can think of trying to identify a probability distribution (e.g., Gaussian) that best describes a given empirical sample. Recall from the M-L lecture our attempt to fit a Gaussian distribution using a Gamma distribution. The sample likelihood for the Gamma, even at optimized (fitted) parameters, can never be as close as a Gaussian fit.
+
+*ML Gamma fit*
+```{r}
+X <- rnorm(5000, mean=50, sd=sqrt(50))
+gfit <- suppressWarnings(fitdistr(X, "gamma"))
+gfit$loglik
+datafromgam <- rgamma(n=5000, shape=gfit$estimate["shape"], rate=gfit$estimate["rate"])
+```
+
+*ML Gaussian fit*
+```{r}
+gfit <- suppressWarnings(fitdistr(X, "normal"))
+gfit$loglik
+datafromgauss <- rnorm(n=5000, mean=gfit$estimate["mean"], sd=gfit$estimate["sd"])
+
+df <- data.frame(model=rep(c("groundtruth", "gamma", "gauss"), each=5000), 
+                           v=c(X, datafromgam, datafromgauss))
+                 
+ggplot(df, aes(x=v, color=model)) + geom_density()
+```
+
+The sample *LL* is an approximation of a K-L distance between a model and 'truth', but read on to AIC below...
+
+In general, we do not know the true model, which means we cannot compute the exact K-L distance. Fortunately, however, we are often interested in *relative* distance -- that is, how much better is model A than model B? In this circumstance, the K-L distance derivation includes two terms: one is based on the expectation under the 'true' model (can't compute that!), the other is based on the *relative* distance between the model and the truth. 
+
+Since we can't compute the first term, it means we do not have a measure of *absolute* fit using likelihood-based and K-L methods. But, because we can compute the relative distance, we can also compute the relative distance *between* two or more models. As a result, we can compare *relative evidence* across a set of candidate models. All may be bad, or all may be good, by some absolute criterion, but we can ascertain which is relatively best. Likelihood methods (K-L distance) are more about relative evidence.
+
+K-L distances are on a true ratio scale (i.e., a meaningful zero point and equal interval spacing). As a result, *differences* in distances can be compared, and a zero K-L difference implies identical relative fit. Moreover, K-L distances tend to become larger as the sample size increases. By analogy, AIC differences among models tend to be larger in large samples compared to small ones. This does not mean that the scaling or interpretation changes! Rather, it underscores that discriminating among models becomes easier in large samples.
+
+## Akaike Information Criterion (AIC)
+
+The derivation of the AIC was a major breakthrough in information theory and statistics because it provides a statistical link between K-L distance (a more theoretical notion) and maximum likelihood-based methods.
+
+The AIC provides an approximation of the relative distance of the fitted model and the unknown (true) mechanisms that generated the data. Importantly, it is a *large sample* criterion (based on asymptotic properties, so 1000s, ideally) and is also not especially meaningful if the models in question are simply inappropriate or poor (e.g., fitting a binary outcome with a continuous model).
+
+$$
+AIC = -2 \textrm{log} (\mathcal{L}(\hat{\theta}|y)) + 2k
+$$
+where $k$ is the number of free parameters, and $\mathcal{L}(\hat{\theta}|y)$ is the sample likelihood.
+
+Note that by multiplying the *LL* by -2, the criterion is now scaled such that *lower* values are better. By contrast, for *LL*, higher values indicate better fit (greater likelihood of the data given the model).
+
+## Corrected AIC
+
+Because AIC is based on a large sample derivation (i.e., its statistical properties are ideal as the sample size goes to infinity), it may select overly complex models in smaller samples (think hundreds, not thousands). This led to the derivation of a variant of AIC, usually denoted $AIC_C$ (Sugiura, 1978), that includes an additional penalty for sample size:
+
+$$
+AIC_C = -2 \textrm{log} (\mathcal{L}(\hat{\theta}|y)) + 2k + \frac{2k(k+1)}{n - k -1}
+$$
+
+When your cases:parameters ratio is below 40 (which it usually is!), Burnham and Anderson recommend this over AIC. But this was derived for univariate (one DV) regression, not necessarily MLM. There is not an MLM derivation that I know of. Neither is there a specific reason that the above derivation is not approximately correct. One sees corrected AIC used in MLM papers regularly and I think it is generally useful, especially for moderately sized samples (total number of L2 units < 500).
+
+# Comparing relative evidence of candidate MLMs
+
+Remember: one of the most important considerations when comparing models is that the dependent variable is *the same* and on the same scale! Predictors can be transformed, but the outcome cannot! The sample likelihood is computed on the *endogenous* variables, which in univariate MLM is just the outcome variable.
+
+Note that you will come across many "IC" (Information Criterion) measures in statistics, including the Bayesian information criterion (BIC). A discussion of these measures is beyond the scope of the workshop, but it's worth mentioning that they have different statistical properties as relates to model selection (i.e., choosing which model fits best). Virtually all of the IC-based approaches build on the sample log-likelihood and are concerned with the *fit-parsimony tradeoff*. That is, we are interested in identifying a model that is as parsimonious as possible, while also fitting the data well. 
+
+We can always improve fit -- that is, sample likelihood -- by adding additional free parameters. Even if the parameters are not useful (e.g., adding a predictor whose p-value is .5), they can only help in fit, even if trivially. This is akin to the motivation for adjusted $R^2$ in regression, where a predictor can only contribute positively to predicted variance in the outcome. Thus, we do not want to prioritize the sample likelihood alone. Instead, we would like to prefer models that have the fewest free parameters possible. But if we delete a free parameter that has a huge effect in the dataset (e.g., a big regression path), the fit will worsen substantially. This is the dilemma of fit versus parsimony, and the motivation for measures such as AIC and BIC that try to balance these considerations.
+
+(Some quotes from Hallquist & Pilkonis, 2010)
+
+## Efficiency (AIC)
+
+AIC is an asymptotically efficient criterion for model selection, which means that it tends to select the model that minimizes prediction error as sample size increases. More generally, AIC is an information criterion primarily concerned with minimizing the relative Kullback-Leibler (K-L) distance between a statistical model and the unknown mechanisms giving rise to the observed data (Claeskens & Hjort, 2008). 
+
+An underlying assumption of AIC is that the “truth” of the data is very complex (i.e., many causal factors of varying strengths) and that no one “true model” exists (Burnham & Anderson, 2002). Thus, AIC is useful for selecting the best approximate model using a finite number of parameters when “truth” is countably infinite.
+
+## Consistency (BIC)
+
+By contrast, the BIC originates from the Bayesian tradition in statistics and is concerned with the statistical property of consistency, which refers to the one “true model” being selected with increasing probability as sample size increases (Yang, 2005). Underlying the property of consistency are several assumptions worth examining: (1) a single “true” model exists that best represents the mechanisms that gave rise to the observed data, (2) one of the models in the set of models tested is the “true” model, and (3) the focus of model selection is to identify the “true” model rather than to provide a close approximation to the truth. Given these assumptions, Burnham and Anderson (2002) have argued against the use of consistent model selection criteria in the biological, medical, and social sciences because such data are highly complex, there is a low likelihood of including the “true model” in any set of models considered, and it is unlikely that a single “true model” exists.
+
+## Comparing models based on AIC or BIC differences
+
+Summarizing extensive simulation work, Burnham and Anderson (2002) offer useful rules-of-thumb for inferring the degree of certainty afforded to a particular model relative to the best fitting model in the set: 
+
+-  models within 0–2 points on the AIC also have substantial support
+-  models in the 4–7 point range have considerably less support
+-  models greater than 10 points apart have almost no support. 
+
+Moreover, AIC values for a set of models can be subtracted from the model with the lowest AIC value and these difference scores can be transformed into a set of Akaike weights that represent the evidential weight of a particular model relative to all other models in the set (Burnham & Anderson, 2002). The important general point is that conclusions drawn from latent variable models would benefit from being contextualized in terms of model selection uncertainty and the degree of support for one model over alternatives.
+
+For details on Akaike weights or evidence ratios, I would recommend checking out the `AICcmodavg` package and Burnham and Anderson's 2002 book. Briefly, the Akaike weight is the probability that model $i$ is the Kullback-Leibler best model in the set of models $I$ that we've tested. A K-L best model just means that the relative distance from the unknown truth is shortest, and thus its relative evidence is best, but the weight gives a sense of uncertainty in this judgment.
+
+```{r}
+aa <- aictab(list(unconditional=m1, experiment=m2))
+
+print(aa)
+```
+
+Reutrning to our unconditional means versus experimental factors models, we see that the difference in AIC between these is approximately 412 points, which would fall into the (very) strong range of Burnham and Anderson's rules. The AIC weights sum to 1.0 and here provide the probability that the experimental model is the best in the set of tested models (here, two). The weight of 1.0 is fairly definitive (the unconditional model is much weaker).
+
+Note that AIC weights do not consider the important possibility that there is another *untested* model that would capture the data far better. Thus, we must always remember that these measures provide relative evidence of one model versus a set of tested alternatives, but not alternatives we failed to consider!
+
+Finally, we can take the ratios of AIC weights as an evidence ratio, which quantifies the ratio in favor of one model (with lower AIC) compared to another (higher AIC).
+
+```{r}
+evidence(aa)
+```
+Here, the ratio of evidence in favor of the model with `cond*block` is gargantuan (2e89). Many statisticians would prefer that such ratios (closely related to Bayes factors) are 10 or higher, minimally, to make strong claims that one model is better than another. But here, we could contextualize the evidence of the model with design factors included is massively higher than the alternative, unconditional means model. If this were not true, we would be worried -- it would suggest that the experimental factors had no meaningful effects on RT.
+
+# Maximal models and model building
+
+Take-home messages from Matuschek et al., 2017.
+
+1. In experimental studies, failing to include random effects of key experimental factors may inflate the significance of the corresponding fixed effects (anti-conservative). See Barr et al., 2013.
+2. Thus, some researchers have advocated for the *maximal* model that contains all possible random effects (i.e., random slopes for all L1 predictors). Even if some of these slopes are tiny/nil, it guards against the risk of inflated test statistics for fixed effects.
+3. However, fitting models with many, many slopes can lead to convergence problems (as random effect variances approach zero, the model is harder to fit), it may hamper statistical power unfairly, and there may be no conceptual gain if one is not interested in explaining these slopes.
+4. Thus, Matuschek and colleagues advocate an approach of fitting a maximal model, then using successive LRTs to prune the complexity of the random effects structure. This pruning includes both covariances among random effects as well as the variance components themselves.
+5. On the basis of their simulations, they recommend Type I error rate ($\alpha$) of .20 for the LRTs. That is, if pruning a parameter from the random effects structure leads to an LRT $p$-value of .20 or less, they suggest you retain the more *complex* model. On the other hand if pruning yields a $p$-value of greater than .20, you are likely safe to drop this from the model because the fit does not worsen by much.
+6. They consider the use of AIC instead of LRTs for this purpose, but suggest that AIC is anti-conservative in small samples.
+
+## Michael's take on Matuschek
+
+I like the general approach of model trimming (based on the LRT) from a maximal model that includes all L1 slopes. It gives you a clear view on which L1 predictors likely have meaningful heterogeneity across L2 units (for us, people). This has the advantage of setting you up to examine what individual difference variables (L2) predictor variation in the random slopes. The model trimming from maximal also avoids the concern about anti-conservative tests.
+
+That said, I would be careful about how the 'maximal model' is defined. In many analyses, there could be a plethora of L1 variables, particularly as one moves into computational model-derived L1 variables. I would conceptualize the 'maximal model' as *all within-subjects experimental design factors should be included as random in the model, including their correlations with each other*. Once you include experimental factors, see what can be pruned from there.
+
+I also find the .20 criterion to be on the conservative end and would worry that one might have convergence problems in larger models. If the LRT is in the .20 range as you prune a parameter, it suggests that the target parameter (e.g., random slope of some factor) is probably very close to zero. Model estimation becomes difficult in this regime. On the other hand, if the LRT p-value is .01 or .001 as you prune, it seems pretty convincing that the random effect parameter is important to fitting the (residual) structure of the data.

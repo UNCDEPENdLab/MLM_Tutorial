@@ -51,3 +51,8 @@ If you already cloned a local copy of the repo, you can get the latest updates u
   - [Visualizing MLM representation of clustering](05_RandomEffects_Moderation/vizrandomeffects.html)
   - [Latent disaggregation](https://psu-psychology.github.io/psy-597-SEM/15_multilevel/multilevel_sem.html#disaggregating-within--versus-between-cluster-effects)
   - [Heterogeneous variance structures](https://quantdev.ssri.psu.edu/sites/qdev/files/ILD_Ch06_2017_MLMwithHeterogeneousVariance.html)
+  
+## 15Apr2021: Model selection and model pruning
+  - [Model selection, evidence, and maximal models](06_ModelSelection/model_comparison.html)
+  - [Flanker model building](06_ModelSelection/flanker_rt_mlm_publication.html)
+  
