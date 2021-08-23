@@ -1,0 +1,1399 @@
+Mplus VERSION 8.4
+MUTHEN & MUTHEN
+05/26/2021  11:42 PM
+
+INPUT INSTRUCTIONS
+
+  !Final Version of Model 1 -- With Covariates
+  DATA: FILE is NAC_mplus_nohead.csv;
+  DEFINE: STANDARDIZE IDys Ideation FUY BL_AGE BIOSEX eduy race;
+  VARIABLE: NAMES ARE ID FUID FUY finalTIS lfdemoY HOSnryr ATTnryr natt_yr LETH_YM
+  BL_AGE BIOSEX BECKD SCLINT HAM16 BISNP BISCOG BISMOT BUSANT P NS23 NS234
+  COOP HA HA124 BG_AGG Ideation SSI_C SSI1 SSI2 SSI3 SSI4 SSI5 IDys SAS_WORK
+  SAS_FAM SAS_SOC marsta eduy eduf work occup incomel pincome race COOP14;
+  CLUSTER = ID;
+  MISSING = all (9999);
+  CATEGORICAL IS ATTnryr;
+  USEVAR = ATTnryr Ideation IDys FUY BL_AGE BIOSEX eduy race;
+  WITHIN = FUY;
+  BETWEEN = BL_AGE BIOSEX eduy race;
+  ANALYSIS: TYPE = TWOLEVEL;
+            PROCESSORS = 4;
+            CHAINS=4;
+            ESTIMATOR=BAYES;
+            BITERATIONS=(30000);
+            KOLMOGOROV = 100;
+  MODEL:
+  %WITHIN%
+  Ideation on IDys (aw);
+  ATTnryr on Ideation (bw);
+  ATTnryr on IDys (cw);
+  ATTnryr on FUY;
+  Ideation on FUY;
+
+  IDys Ideation FUY;
+
+  %BETWEEN%
+  Ideation ON IDys (ab);
+  ATTnryr on Ideation (bb);
+  ATTnryr on IDys (cb);
+
+  ATTnryr on BL_AGE BIOSEX eduy race;
+  Ideation on BL_AGE BIOSEX eduy race;
+
+  IDys Ideation;
+  BL_AGE BIOSEX eduy race;
+
+  BL_AGE WITH BIOSEX eduy race;
+  BIOSEX WITH eduy race;
+  eduy WITH race;
+
+  MODEL CONSTRAINT:
+  NEW (WIND BIND);
+  WIND = aw*bw;
+  BIND = ab*bb;
+
+  OUTPUT: TECH1 TECH8 STANDARDIZED;
+
+
+
+*** WARNING
+  One or more individual-level variables have no variation within a
+  cluster for the following clusters.
+
+     Variable   Cluster IDs with no within-cluster variation
+
+      ATTNRYR     7251 7268 7269 7275 7285 7292 2122 7299 6367 6234 6740 6960 6429 6500 6577 6244
+                  7071 6610 7155 2155 7201 7205 7215 7216 7217 7227 7229 7231 6641 7240 6644 7183
+                  7185 7187 7188 7189 7190 7192 7193 7194 7195 7197 6820 7203 7204 2105 7207 7209
+                  7211 6398 2137 6497 7064 2549 6753 7148 6767 7154 2088 2162 7164 7167 7173 7175
+                  7180 7091 3229 7095 7100 7101 7111 7118 7121 7126 6900 6796 6540 6405 6166 6186
+                  6436 2041 7073 7074 7080 7086 7089 7032 7066 7068 7034 7035 6910 6616 7042 7013
+                  7048 6978 7061 6954 7017 7021 7027 7030 7031 6295 6898 6942 7008 7014 6128 6831
+                  2615 6181 6972 6974 6645 6991 2324 6999 6514 6667 2498 6215 6608 6858 2234 6930
+                  2215 6552 3075 6605 6840 6946 6949 6951 6955 6768 6912 6914 6916 6918 6924 6019
+                  6933 2523 6872 2387 6882 6891 6659 6721 6845 6909 6854 6747 2028 6624 6842 2009
+                  6791 6853 6228 6815 6865 6869 6871 6821 6793 6739 6800 6803 6806 6809 6810 6757
+                  6819 6759 6553 6745 6780 6783 6746 6505 6727 2405 6733 2496 6018 6672 2547 6684
+                  6687 6689 6657 6693 6694 6600 2481 6521 6640 6582 6611 6583 6590 6620 6212 6623
+                  6662 6593 6668 6441 6508 6510 6250 6538 6476 6543 6544 6551 6051 2356 6084 6413
+                  2042 6214 6281 3230 6307 6199 6325 6254 6223 6183 6156 2235 6063 6072 2210 2502
+                  3228 3196 2479 2385 2253 2363 2002
+      IDEATION    2003 2012 7151 7157 7251 7279 7215 7231 6644 7185 7190 7193 7207 6398 6497 6767
+                  7162 7126 7089 7048 6978 7017 7021 6898 7001 7014 6831 6645 6991 6667 6608 6930
+                  6605 6840 6768 6916 6924 6019 6891 6659 6854 6624 6803 6819 6553 6505 6672 6684
+                  6693 6611 6583 6593 6508 6250 6543 6551 2031 2392 2021
+      IDYS        2003 2501 3163 6415 6841 7005 7151 7157 7235 7236 7241 7298 7306 7307 7308 7309
+                  7310 7311 7312 7313 7317 7318 7320 7323 7324 7325 7331 7332 7334 7336 7337 7338
+                  7339 7340 7343 7344 7345 7346 7365 7367 7373 7375 7376 7377 7379 7381 7385 7251
+                  7268 7269 7272 7275 7278 7279 7285 7292 2122 7299 7304 7305 7037 7155 2155 7201
+                  7205 7206 7215 7216 7217 7219 7223 7224 7227 7229 7231 7233 7237 7238 7240 7183
+                  7185 7187 7188 7189 7190 7192 7193 7194 7195 7196 7197 7203 7204 7207 7209 7211
+                  7148 7154 7159 7162 7164 7167 7168 7173 7175 7180 7095 7098 7111 7114 7118 7121
+                  7126 2041 7089 6847
+
+   1 WARNING(S) FOUND IN THE INPUT INSTRUCTIONS
+
+
+
+
+SUMMARY OF ANALYSIS
+
+Number of groups                                                 1
+Number of observations                                        3837
+
+Number of dependent variables                                    2
+Number of independent variables                                  6
+Number of continuous latent variables                            0
+
+Observed dependent variables
+
+  Continuous
+   IDEATION
+
+  Binary and ordered categorical (ordinal)
+   ATTNRYR
+
+Observed independent variables
+   IDYS        FUY         BL_AGE      BIOSEX      EDUY        RACE
+
+Variables with special functions
+
+  Cluster variable      ID
+
+  Within variables
+   FUY
+
+  Between variables
+   BL_AGE      BIOSEX      EDUY        RACE
+
+
+Estimator                                                    BAYES
+Specifications for Bayesian Estimation
+  Point estimate                                            MEDIAN
+  Number of Markov chain Monte Carlo (MCMC) chains               4
+  Random seed for the first chain                                0
+  Starting value information                           UNPERTURBED
+  Algorithm used for Markov chain Monte Carlo           GIBBS(PX1)
+  Convergence criterion                                  0.500D-01
+  Maximum number of iterations                               50000
+  K-th iteration used for thinning                               1
+Link                                                        PROBIT
+
+Input data file(s)
+  NAC_mplus_nohead.csv
+Input data format  FREE
+
+
+SUMMARY OF DATA
+
+     Number of clusters                        458
+
+       Size (s)    Cluster ID with Size s
+
+          1        2003 2012 2035 2094 2133 2167 2255 2350 2352 2371 2472
+                   2489 2501 2690 3017 3104 3163 6233 6345 6359 6415 6591
+                   6625 6635 6660 6691 6728 6826 6841 6846 6876 6881 6893
+                   6901 6915 6934 6935 6939 6940 6943 6945 7005 7010 7015
+                   7038 7043 7060 7092 7151 7157 7235 7236 7241 7298 7306
+                   7307 7308 7309 7310 7311 7312 7313 7317 7318 7320 7323
+                   7324 7325 7331 7332 7334 7336 7337 7338 7339 7340 7343
+                   7344 7345 7346 7365 7367 7373 7375 7376 7377 7379 7381
+                   7385
+          2        7251 7268 7269 7272 7275 7278 7279 7285 7292 2122 7299
+                   7304 7305 6367 6234 6740 6960 6787 6798 6429 7037 6500
+                   6577 6244 7071 6610 6299 7155 2155 7201 7205 7206 7215
+                   7216 7217 7219 7223 7224 7227 7229 7231 7233 6641 6642
+                   7237 7238 7240 6644
+          3        7183 7185 7187 7188 7189 7190 7192 7193 7194 7195 7196
+                   7197 6820 7203 7204 2388 2105 7207 7209 7211 6398 3166
+                   2137 6466 6497 2141 7064 2549 6753 7148 6767 7154 2088
+                   2162 7159 7162 7164 7167 7168 7173 7175 7180
+          4        7091 3229 7095 7098 7100 7101 7111 7114 7118 7121 7126
+                   6996 6900 6796 6540 6405 6166 6186 7047 6436 2041 2075
+                   7073 7074 7080 7086 7089
+          5        7032 7066 7068 7034 7035 6910 6616 7042 2632 7013 7048
+                   6978 7061
+          6        6954 7016 7017 7018 7021 7027 7030 7031 6295 6898 6942
+                   7001 6725 7008 6944 2334 7014
+          7        6128 6451 6831 2615 6181 6972 6974 6645 6990 6991 2324
+                   6999 6514 6708
+          8        6667 2498 6961 6215 6608 6858 6655 2234
+          9        6930 6857 2215 2684 6552 3075 6171 6605 6840 6946 6949
+                   6951 6676 6955 6768
+         10        6912 6914 6856 6916 6917 6918 6924 6926 6929 6019 6933
+                   2523 6872 6679 2387 6882 6888 6891 6659 6721 6845 6622
+                   6907 6909 6854
+         11        6747 2438 2028 6624 6842 2009 6791 6847 6853 6267 6228
+                   6815 6541 6865 6869 6871 6821
+         12        6793 6750 6739 6800 6803 6806 6809 6810 6757 6819 6759
+                   6762 6553 6745 6780 6783 6746 6505
+         13        6197 6724 2089 6727 2405 6732 6733 2496 2697 6742 2113
+                   6018
+         14        6672 6654 2547 6684 6687 6689 6657 6693 6694 6695 6699
+                   6701 6706 6600 6714 2481 6619
+         15        6521 6628 6535 6640 6102 6582 6611 6583 6650 6617 6590
+                   6620 6212 6623 6662 6593 6668
+         16        6441 6508 6510 6250 6515 2212 6523 6475 6538 6476 6486
+                   6543 6544 6551 6489 6051 2356
+         17        6383 6391 6084 6313 6413 2031 6424 2042 6214
+         18        6340 6281 6353 3230 6298 2412 6307 6199 6404 6325
+         19        2147 6254 6223 6239 6195
+         20        6173 6055 6183 6172
+         21        6115 6168 6156
+         22        6075 6027 2235 2016 6063 6072
+         23        2210 2502
+         24        3228
+         25        3156 2694 3107 3196
+         26        2630 2602 2566
+         27        2468 2392 2479 2436 2385
+         28        2253 2363
+         29        2241 2185 2097
+         30        2021 2029 2049 2069
+         31        2002
+
+
+
+COVARIANCE COVERAGE OF DATA
+
+Minimum covariance coverage value   0.100
+
+     Number of missing data patterns            16
+
+
+     PROPORTION OF DATA PRESENT
+
+
+           Covariance Coverage
+              ATTNRYR       BL_AGE        BIOSEX        EDUY          RACE
+              ________      ________      ________      ________      ________
+ ATTNRYR        0.978
+ BL_AGE         0.978         1.000
+ BIOSEX         0.978         1.000         1.000
+ EDUY           0.967         0.989         0.989         0.989
+ RACE           0.951         0.973         0.973         0.962         0.973
+ IDEATION       0.642         0.663         0.663         0.662         0.645
+ IDYS           0.464         0.468         0.468         0.468         0.453
+ FUY            0.978         1.000         1.000         0.989         0.973
+
+
+           Covariance Coverage
+              IDEATION      IDYS          FUY
+              ________      ________      ________
+ IDEATION       0.663
+ IDYS           0.459         0.468
+ FUY            0.663         0.468         1.000
+
+
+UNIVARIATE PROPORTIONS AND COUNTS FOR CATEGORICAL VARIABLES
+
+    ATTNRYR
+      Category 1    0.940         3526.000
+      Category 2    0.060          225.000
+
+
+
+UNIVARIATE SAMPLE STATISTICS
+
+
+     UNIVARIATE HIGHER-ORDER MOMENT DESCRIPTIVE STATISTICS
+
+         Variable/         Mean/     Skewness/   Minimum/ % with                Percentiles
+        Sample Size      Variance    Kurtosis    Maximum  Min/Max      20%/60%    40%/80%    Median
+
+     BL_AGE               -0.023       0.689      -1.373    0.22%      -0.934     -0.555     -0.276
+             458.000       0.956      -0.559       2.861    0.22%       0.036      0.945
+     BIOSEX                0.071       1.274      -0.505   76.86%      -0.505     -0.505     -0.505
+             458.000       1.099      -0.378       1.981   23.14%      -0.505      1.981
+     EDUY                 -0.004       0.316      -3.885    0.22%      -0.909     -0.059     -0.059
+             456.000       1.045       1.692       4.191    0.22%      -0.059      0.791
+     RACE                 -0.012      -1.169      -1.767   24.78%      -1.767      0.566      0.566
+             448.000       1.014      -0.635       0.566   75.22%       0.566      0.566
+     IDEATION              0.000       1.815      -0.598   56.82%      -0.598     -0.598     -0.598
+            2543.000       1.000       2.691       4.490    0.08%      -0.460      0.708
+     IDYS                  0.000       0.469      -2.200    0.06%      -0.901     -0.344     -0.076
+            1797.000       1.000      -0.016       4.090    0.06%       0.190      0.821
+     FUY                   0.000       1.056      -1.126   11.94%      -0.963     -0.476     -0.152
+            3837.000       1.000       0.711       3.743    0.03%       0.010      0.822
+
+
+THE MODEL ESTIMATION TERMINATED NORMALLY
+
+     USE THE FBITERATIONS OPTION TO INCREASE THE NUMBER OF ITERATIONS BY A FACTOR
+     OF AT LEAST TWO TO CHECK CONVERGENCE AND THAT THE PSR VALUE DOES NOT INCREASE.
+
+
+
+MODEL FIT INFORMATION
+
+Number of Free Parameters                              40
+
+Bayesian Posterior Predictive Checking using Chi-Square
+
+          95% Confidence Interval for the Difference Between
+          the Observed and the Replicated Chi-Square Values
+
+                                -11.946            49.407
+
+          Posterior Predictive P-Value              0.125
+
+
+
+MODEL RESULTS
+
+                                Posterior  One-Tailed         95% C.I.
+                    Estimate       S.D.      P-Value   Lower 2.5%  Upper 2.5%  Significance
+
+Within Level
+
+ IDEATION   ON
+    IDYS               0.424       0.032      0.000       0.360       0.486      *
+    FUY               -0.186       0.019      0.000      -0.224      -0.148      *
+
+ ATTNRYR    ON
+    IDEATION           0.135       0.051      0.004       0.034       0.235      *
+    IDYS               0.276       0.091      0.001       0.101       0.459      *
+    FUY               -0.191       0.048      0.000      -0.286      -0.098      *
+
+ Means
+    FUY                0.000       0.016      0.498      -0.032       0.032
+
+ Variances
+    IDYS               0.426       0.016      0.000       0.397       0.459      *
+    FUY                1.001       0.023      0.000       0.957       1.047      *
+
+ Residual Variances
+    IDEATION           0.617       0.021      0.000       0.578       0.659      *
+
+Between Level
+
+ IDEATION   ON
+    IDYS               0.357       0.058      0.000       0.242       0.468      *
+    BL_AGE            -0.041       0.034      0.115      -0.108       0.026
+    BIOSEX             0.038       0.033      0.120      -0.025       0.102
+    EDUY              -0.044       0.033      0.090      -0.108       0.020
+    RACE               0.071       0.033      0.017       0.005       0.137      *
+
+ ATTNRYR    ON
+    IDEATION           0.873       0.146      0.000       0.604       1.176      *
+    IDYS              -0.069       0.109      0.257      -0.288       0.140
+    BL_AGE             0.038       0.059      0.259      -0.078       0.156
+    BIOSEX            -0.102       0.059      0.037      -0.221       0.010
+    EDUY              -0.061       0.061      0.156      -0.180       0.058
+    RACE               0.038       0.061      0.261      -0.079       0.160
+
+ BL_AGE   WITH
+    BIOSEX             0.126       0.049      0.004       0.031       0.222      *
+    EDUY               0.108       0.047      0.010       0.017       0.203      *
+    RACE              -0.007       0.047      0.443      -0.098       0.085
+
+ BIOSEX   WITH
+    EDUY              -0.109       0.051      0.015      -0.212      -0.010      *
+    RACE              -0.015       0.050      0.386      -0.114       0.084
+
+ EDUY     WITH
+    RACE               0.110       0.049      0.011       0.016       0.208      *
+
+ Means
+    BL_AGE            -0.023       0.046      0.308      -0.112       0.067
+    BIOSEX             0.071       0.049      0.074      -0.025       0.168
+    EDUY              -0.006       0.048      0.452      -0.099       0.088
+    RACE              -0.012       0.047      0.398      -0.106       0.081
+    IDYS               0.163       0.045      0.000       0.075       0.252      *
+
+ Intercepts
+    IDEATION           0.030       0.035      0.196      -0.038       0.099
+
+ Thresholds
+    ATTNRYR$1          2.066       0.094      0.000       1.901       2.270      *
+
+ Variances
+    BL_AGE             0.957       0.064      0.000       0.842       1.092      *
+    BIOSEX             1.101       0.074      0.000       0.970       1.258      *
+    EDUY               1.046       0.070      0.000       0.921       1.196      *
+    RACE               1.015       0.068      0.000       0.894       1.161      *
+    IDYS               0.538       0.052      0.000       0.446       0.650      *
+
+ Residual Variances
+    ATTNRYR            0.340       0.105      0.000       0.174       0.588      *
+    IDEATION           0.284       0.038      0.000       0.217       0.365      *
+
+New/Additional Parameters
+    WIND               0.057       0.022      0.004       0.014       0.102      *
+    BIND               0.308       0.073      0.000       0.183       0.468      *
+
+
+STANDARDIZED MODEL RESULTS
+
+
+STDYX Standardization
+
+                                Posterior  One-Tailed         95% C.I.
+                    Estimate       S.D.      P-Value   Lower 2.5%  Upper 2.5%  Significance
+Within Level
+
+ IDEATION   ON
+    IDYS               0.325       0.024      0.000       0.275       0.371      *
+    FUY               -0.218       0.022      0.000      -0.261      -0.175      *
+
+ ATTNRYR    ON
+    IDEATION           0.109       0.041      0.004       0.027       0.189      *
+    IDYS               0.171       0.055      0.001       0.063       0.279      *
+    FUY               -0.181       0.044      0.000      -0.266      -0.094      *
+
+ Means
+    FUY                0.000       0.016      0.498      -0.032       0.032
+
+ Variances
+    IDYS               1.000       0.000      0.000       1.000       1.000
+    FUY                1.000       0.000      0.000       1.000       1.000
+
+ Residual Variances
+    IDEATION           0.846       0.017      0.000       0.812       0.879      *
+
+Between Level
+
+ IDEATION   ON
+    IDYS               0.432       0.065      0.000       0.297       0.551      *
+    BL_AGE            -0.066       0.054      0.115      -0.170       0.043
+    BIOSEX             0.066       0.056      0.120      -0.044       0.175
+    EDUY              -0.074       0.055      0.090      -0.181       0.034
+    RACE               0.118       0.055      0.017       0.009       0.224      *
+
+ ATTNRYR    ON
+    IDEATION           0.669       0.092      0.000       0.479       0.837      *
+    IDYS              -0.064       0.099      0.257      -0.261       0.127
+    BL_AGE             0.047       0.072      0.259      -0.095       0.188
+    BIOSEX            -0.134       0.076      0.037      -0.287       0.014
+    EDUY              -0.079       0.077      0.156      -0.231       0.073
+    RACE               0.049       0.076      0.261      -0.100       0.197
+
+ BL_AGE   WITH
+    BIOSEX             0.123       0.046      0.004       0.030       0.211      *
+    EDUY               0.108       0.046      0.010       0.017       0.198      *
+    RACE              -0.007       0.047      0.443      -0.099       0.086
+
+ BIOSEX   WITH
+    EDUY              -0.102       0.047      0.015      -0.193      -0.009      *
+    RACE              -0.014       0.047      0.386      -0.106       0.079
+
+ EDUY     WITH
+    RACE               0.107       0.046      0.011       0.016       0.197      *
+
+ Means
+    BL_AGE            -0.023       0.047      0.308      -0.114       0.069
+    BIOSEX             0.067       0.047      0.074      -0.024       0.160
+    EDUY              -0.006       0.047      0.452      -0.097       0.086
+    RACE              -0.012       0.047      0.398      -0.105       0.080
+    IDYS               0.222       0.061      0.000       0.103       0.343      *
+
+ Intercepts
+    IDEATION           0.049       0.058      0.196      -0.062       0.163
+
+ Thresholds
+    ATTNRYR$1          2.592       0.208      0.000       2.230       3.049      *
+
+ Variances
+    BL_AGE             1.000       0.000      0.000       1.000       1.000
+    BIOSEX             1.000       0.000      0.000       1.000       1.000
+    EDUY               1.000       0.000      0.000       1.000       1.000
+    RACE               1.000       0.000      0.000       1.000       1.000
+    IDYS               1.000       0.000      0.000       1.000       1.000
+
+ Residual Variances
+    ATTNRYR            0.538       0.095      0.000       0.348       0.721      *
+    IDEATION           0.774       0.058      0.000       0.653       0.880      *
+
+
+STDY Standardization
+
+                                Posterior  One-Tailed         95% C.I.
+                    Estimate       S.D.      P-Value   Lower 2.5%  Upper 2.5%  Significance
+Within Level
+
+ IDEATION   ON
+    IDYS               0.325       0.024      0.000       0.275       0.371      *
+    FUY               -0.218       0.022      0.000      -0.261      -0.175      *
+
+ ATTNRYR    ON
+    IDEATION           0.109       0.041      0.004       0.027       0.189      *
+    IDYS               0.171       0.055      0.001       0.063       0.279      *
+    FUY               -0.181       0.044      0.000      -0.266      -0.094      *
+
+ Means
+    FUY                0.000       0.016      0.498      -0.032       0.032
+
+ Variances
+    IDYS               1.000       0.000      0.000       1.000       1.000
+    FUY                1.000       0.000      0.000       1.000       1.000
+
+ Residual Variances
+    IDEATION           0.846       0.017      0.000       0.812       0.879      *
+
+Between Level
+
+ IDEATION   ON
+    IDYS               0.432       0.065      0.000       0.297       0.551      *
+    BL_AGE            -0.066       0.054      0.115      -0.170       0.043
+    BIOSEX             0.066       0.056      0.120      -0.044       0.175
+    EDUY              -0.074       0.055      0.090      -0.181       0.034
+    RACE               0.118       0.055      0.017       0.009       0.224      *
+
+ ATTNRYR    ON
+    IDEATION           0.669       0.092      0.000       0.479       0.837      *
+    IDYS              -0.064       0.099      0.257      -0.261       0.127
+    BL_AGE             0.047       0.072      0.259      -0.095       0.188
+    BIOSEX            -0.134       0.076      0.037      -0.287       0.014
+    EDUY              -0.079       0.077      0.156      -0.231       0.073
+    RACE               0.049       0.076      0.261      -0.100       0.197
+
+ BL_AGE   WITH
+    BIOSEX             0.123       0.046      0.004       0.030       0.211      *
+    EDUY               0.108       0.046      0.010       0.017       0.198      *
+    RACE              -0.007       0.047      0.443      -0.099       0.086
+
+ BIOSEX   WITH
+    EDUY              -0.102       0.047      0.015      -0.193      -0.009      *
+    RACE              -0.014       0.047      0.386      -0.106       0.079
+
+ EDUY     WITH
+    RACE               0.107       0.046      0.011       0.016       0.197      *
+
+ Means
+    BL_AGE            -0.023       0.047      0.308      -0.114       0.069
+    BIOSEX             0.067       0.047      0.074      -0.024       0.160
+    EDUY              -0.006       0.047      0.452      -0.097       0.086
+    RACE              -0.012       0.047      0.398      -0.105       0.080
+    IDYS               0.222       0.061      0.000       0.103       0.343      *
+
+ Intercepts
+    IDEATION           0.049       0.058      0.196      -0.062       0.163
+
+ Thresholds
+    ATTNRYR$1          2.592       0.208      0.000       2.230       3.049      *
+
+ Variances
+    BL_AGE             1.000       0.000      0.000       1.000       1.000
+    BIOSEX             1.000       0.000      0.000       1.000       1.000
+    EDUY               1.000       0.000      0.000       1.000       1.000
+    RACE               1.000       0.000      0.000       1.000       1.000
+    IDYS               1.000       0.000      0.000       1.000       1.000
+
+ Residual Variances
+    ATTNRYR            0.538       0.095      0.000       0.348       0.721      *
+    IDEATION           0.774       0.058      0.000       0.653       0.880      *
+
+
+STD Standardization
+
+                                Posterior  One-Tailed         95% C.I.
+                    Estimate       S.D.      P-Value   Lower 2.5%  Upper 2.5%  Significance
+Within Level
+
+ IDEATION   ON
+    IDYS               0.424       0.032      0.000       0.360       0.486      *
+    FUY               -0.186       0.019      0.000      -0.224      -0.148      *
+
+ ATTNRYR    ON
+    IDEATION           0.135       0.051      0.004       0.034       0.235      *
+    IDYS               0.276       0.091      0.001       0.101       0.459      *
+    FUY               -0.191       0.048      0.000      -0.286      -0.098      *
+
+ Means
+    FUY                0.000       0.016      0.498      -0.032       0.032
+
+ Variances
+    IDYS               0.426       0.016      0.000       0.397       0.459      *
+    FUY                1.001       0.023      0.000       0.957       1.047      *
+
+ Residual Variances
+    IDEATION           0.617       0.021      0.000       0.578       0.659      *
+
+Between Level
+
+ IDEATION   ON
+    IDYS               0.357       0.058      0.000       0.242       0.468      *
+    BL_AGE            -0.041       0.034      0.115      -0.108       0.026
+    BIOSEX             0.038       0.033      0.120      -0.025       0.102
+    EDUY              -0.044       0.033      0.090      -0.108       0.020
+    RACE               0.071       0.033      0.017       0.005       0.137      *
+
+ ATTNRYR    ON
+    IDEATION           0.873       0.146      0.000       0.604       1.176      *
+    IDYS              -0.069       0.109      0.257      -0.288       0.140
+    BL_AGE             0.038       0.059      0.259      -0.078       0.156
+    BIOSEX            -0.102       0.059      0.037      -0.221       0.010
+    EDUY              -0.061       0.061      0.156      -0.180       0.058
+    RACE               0.038       0.061      0.261      -0.079       0.160
+
+ BL_AGE   WITH
+    BIOSEX             0.126       0.049      0.004       0.031       0.222      *
+    EDUY               0.108       0.047      0.010       0.017       0.203      *
+    RACE              -0.007       0.047      0.443      -0.098       0.085
+
+ BIOSEX   WITH
+    EDUY              -0.109       0.051      0.015      -0.212      -0.010      *
+    RACE              -0.015       0.050      0.386      -0.114       0.084
+
+ EDUY     WITH
+    RACE               0.110       0.049      0.011       0.016       0.208      *
+
+ Means
+    BL_AGE            -0.023       0.046      0.308      -0.112       0.067
+    BIOSEX             0.071       0.049      0.074      -0.025       0.168
+    EDUY              -0.006       0.048      0.452      -0.099       0.088
+    RACE              -0.012       0.047      0.398      -0.106       0.081
+    IDYS               0.163       0.045      0.000       0.075       0.252      *
+
+ Intercepts
+    IDEATION           0.030       0.035      0.196      -0.038       0.099
+
+ Thresholds
+    ATTNRYR$1          2.066       0.094      0.000       1.901       2.270      *
+
+ Variances
+    BL_AGE             0.957       0.064      0.000       0.842       1.092      *
+    BIOSEX             1.101       0.074      0.000       0.970       1.258      *
+    EDUY               1.046       0.070      0.000       0.921       1.196      *
+    RACE               1.015       0.068      0.000       0.894       1.161      *
+    IDYS               0.538       0.052      0.000       0.446       0.650      *
+
+ Residual Variances
+    ATTNRYR            0.340       0.105      0.000       0.174       0.588      *
+    IDEATION           0.284       0.038      0.000       0.217       0.365      *
+
+
+R-SQUARE
+
+Within Level
+
+                                Posterior  One-Tailed         95% C.I.
+    Variable        Estimate       S.D.      P-Value   Lower 2.5%  Upper 2.5%
+
+    ATTNRYR            0.099       0.025      0.000       0.055       0.154
+    IDEATION           0.154       0.017      0.000       0.121       0.188
+
+Between Level
+
+                                Posterior  One-Tailed         95% C.I.
+    Variable        Estimate       S.D.      P-Value   Lower 2.5%  Upper 2.5%
+
+    ATTNRYR            0.462       0.095      0.000       0.279       0.652
+    IDEATION           0.226       0.058      0.000       0.120       0.347
+
+
+TECHNICAL 1 OUTPUT
+
+
+     PARAMETER SPECIFICATION FOR WITHIN
+
+
+           TAU
+              ATTNRYR$
+              ________
+                    0
+
+
+           NU
+              ATTNRYR       IDEATION      IDYS          FUY
+              ________      ________      ________      ________
+                    0             0             0             0
+
+
+           LAMBDA
+              ATTNRYR       IDEATION      IDYS          FUY
+              ________      ________      ________      ________
+ ATTNRYR            0             0             0             0
+ IDEATION           0             0             0             0
+ IDYS               0             0             0             0
+ FUY                0             0             0             0
+
+
+           THETA
+              ATTNRYR       IDEATION      IDYS          FUY
+              ________      ________      ________      ________
+ ATTNRYR            0
+ IDEATION           0             0
+ IDYS               0             0             0
+ FUY                0             0             0             0
+
+
+           ALPHA
+              ATTNRYR       IDEATION      IDYS          FUY
+              ________      ________      ________      ________
+                    0             0             0             1
+
+
+           BETA
+              ATTNRYR       IDEATION      IDYS          FUY
+              ________      ________      ________      ________
+ ATTNRYR            0             2             3             4
+ IDEATION           0             0             5             6
+ IDYS               0             0             0             0
+ FUY                0             0             0             0
+
+
+           PSI
+              ATTNRYR       IDEATION      IDYS          FUY
+              ________      ________      ________      ________
+ ATTNRYR            0
+ IDEATION           0             7
+ IDYS               0             0             8
+ FUY                0             0             0             9
+
+
+     PARAMETER SPECIFICATION FOR BETWEEN
+
+
+           TAU
+              ATTNRYR$
+              ________
+                   40
+
+
+           NU
+              ATTNRYR       BL_AGE        BIOSEX        EDUY          RACE
+              ________      ________      ________      ________      ________
+                    0             0             0             0             0
+
+
+           NU
+              IDEATION      IDYS
+              ________      ________
+                    0             0
+
+
+           LAMBDA
+              ATTNRYR       BL_AGE        BIOSEX        EDUY          RACE
+              ________      ________      ________      ________      ________
+ ATTNRYR            0             0             0             0             0
+ BL_AGE             0             0             0             0             0
+ BIOSEX             0             0             0             0             0
+ EDUY               0             0             0             0             0
+ RACE               0             0             0             0             0
+ IDEATION           0             0             0             0             0
+ IDYS               0             0             0             0             0
+
+
+           LAMBDA
+              IDEATION      IDYS
+              ________      ________
+ ATTNRYR            0             0
+ BL_AGE             0             0
+ BIOSEX             0             0
+ EDUY               0             0
+ RACE               0             0
+ IDEATION           0             0
+ IDYS               0             0
+
+
+           THETA
+              ATTNRYR       BL_AGE        BIOSEX        EDUY          RACE
+              ________      ________      ________      ________      ________
+ ATTNRYR            0
+ BL_AGE             0             0
+ BIOSEX             0             0             0
+ EDUY               0             0             0             0
+ RACE               0             0             0             0             0
+ IDEATION           0             0             0             0             0
+ IDYS               0             0             0             0             0
+
+
+           THETA
+              IDEATION      IDYS
+              ________      ________
+ IDEATION           0
+ IDYS               0             0
+
+
+           ALPHA
+              ATTNRYR       BL_AGE        BIOSEX        EDUY          RACE
+              ________      ________      ________      ________      ________
+                    0            10            11            12            13
+
+
+           ALPHA
+              IDEATION      IDYS
+              ________      ________
+                   14            15
+
+
+           BETA
+              ATTNRYR       BL_AGE        BIOSEX        EDUY          RACE
+              ________      ________      ________      ________      ________
+ ATTNRYR            0            16            17            18            19
+ BL_AGE             0             0             0             0             0
+ BIOSEX             0             0             0             0             0
+ EDUY               0             0             0             0             0
+ RACE               0             0             0             0             0
+ IDEATION           0            22            23            24            25
+ IDYS               0             0             0             0             0
+
+
+           BETA
+              IDEATION      IDYS
+              ________      ________
+ ATTNRYR           20            21
+ BL_AGE             0             0
+ BIOSEX             0             0
+ EDUY               0             0
+ RACE               0             0
+ IDEATION           0            26
+ IDYS               0             0
+
+
+           PSI
+              ATTNRYR       BL_AGE        BIOSEX        EDUY          RACE
+              ________      ________      ________      ________      ________
+ ATTNRYR           27
+ BL_AGE             0            28
+ BIOSEX             0            29            30
+ EDUY               0            31            32            33
+ RACE               0            34            35            36            37
+ IDEATION           0             0             0             0             0
+ IDYS               0             0             0             0             0
+
+
+           PSI
+              IDEATION      IDYS
+              ________      ________
+ IDEATION          38
+ IDYS               0            39
+
+
+     PARAMETER SPECIFICATION FOR THE ADDITIONAL PARAMETERS
+
+
+           NEW/ADDITIONAL PARAMETERS
+              WIND          BIND
+              ________      ________
+                   41            42
+
+
+     STARTING VALUES FOR WITHIN
+
+
+           TAU
+              ATTNRYR$
+              ________
+                0.000
+
+
+           NU
+              ATTNRYR       IDEATION      IDYS          FUY
+              ________      ________      ________      ________
+                0.000         0.000         0.000         0.000
+
+
+           LAMBDA
+              ATTNRYR       IDEATION      IDYS          FUY
+              ________      ________      ________      ________
+ ATTNRYR        1.000         0.000         0.000         0.000
+ IDEATION       0.000         1.000         0.000         0.000
+ IDYS           0.000         0.000         1.000         0.000
+ FUY            0.000         0.000         0.000         1.000
+
+
+           THETA
+              ATTNRYR       IDEATION      IDYS          FUY
+              ________      ________      ________      ________
+ ATTNRYR        0.000
+ IDEATION       0.000         0.000
+ IDYS           0.000         0.000         0.000
+ FUY            0.000         0.000         0.000         0.000
+
+
+           ALPHA
+              ATTNRYR       IDEATION      IDYS          FUY
+              ________      ________      ________      ________
+                0.000         0.000         0.000         0.000
+
+
+           BETA
+              ATTNRYR       IDEATION      IDYS          FUY
+              ________      ________      ________      ________
+ ATTNRYR        0.000         0.000         0.000         0.000
+ IDEATION       0.000         0.000         0.000         0.000
+ IDYS           0.000         0.000         0.000         0.000
+ FUY            0.000         0.000         0.000         0.000
+
+
+           PSI
+              ATTNRYR       IDEATION      IDYS          FUY
+              ________      ________      ________      ________
+ ATTNRYR        1.000
+ IDEATION       0.000         0.500
+ IDYS           0.000         0.000         0.500
+ FUY            0.000         0.000         0.000         0.500
+
+
+     STARTING VALUES FOR BETWEEN
+
+
+           TAU
+              ATTNRYR$
+              ________
+                1.529
+
+
+           NU
+              ATTNRYR       BL_AGE        BIOSEX        EDUY          RACE
+              ________      ________      ________      ________      ________
+                0.000         0.000         0.000         0.000         0.000
+
+
+           NU
+              IDEATION      IDYS
+              ________      ________
+                0.000         0.000
+
+
+           LAMBDA
+              ATTNRYR       BL_AGE        BIOSEX        EDUY          RACE
+              ________      ________      ________      ________      ________
+ ATTNRYR        1.000         0.000         0.000         0.000         0.000
+ BL_AGE         0.000         1.000         0.000         0.000         0.000
+ BIOSEX         0.000         0.000         1.000         0.000         0.000
+ EDUY           0.000         0.000         0.000         1.000         0.000
+ RACE           0.000         0.000         0.000         0.000         1.000
+ IDEATION       0.000         0.000         0.000         0.000         0.000
+ IDYS           0.000         0.000         0.000         0.000         0.000
+
+
+           LAMBDA
+              IDEATION      IDYS
+              ________      ________
+ ATTNRYR        0.000         0.000
+ BL_AGE         0.000         0.000
+ BIOSEX         0.000         0.000
+ EDUY           0.000         0.000
+ RACE           0.000         0.000
+ IDEATION       1.000         0.000
+ IDYS           0.000         1.000
+
+
+           THETA
+              ATTNRYR       BL_AGE        BIOSEX        EDUY          RACE
+              ________      ________      ________      ________      ________
+ ATTNRYR        0.000
+ BL_AGE         0.000         0.000
+ BIOSEX         0.000         0.000         0.000
+ EDUY           0.000         0.000         0.000         0.000
+ RACE           0.000         0.000         0.000         0.000         0.000
+ IDEATION       0.000         0.000         0.000         0.000         0.000
+ IDYS           0.000         0.000         0.000         0.000         0.000
+
+
+           THETA
+              IDEATION      IDYS
+              ________      ________
+ IDEATION       0.000
+ IDYS           0.000         0.000
+
+
+           ALPHA
+              ATTNRYR       BL_AGE        BIOSEX        EDUY          RACE
+              ________      ________      ________      ________      ________
+                0.000         0.000         0.000         0.000         0.000
+
+
+           ALPHA
+              IDEATION      IDYS
+              ________      ________
+                0.000         0.000
+
+
+           BETA
+              ATTNRYR       BL_AGE        BIOSEX        EDUY          RACE
+              ________      ________      ________      ________      ________
+ ATTNRYR        0.000         0.000         0.000         0.000         0.000
+ BL_AGE         0.000         0.000         0.000         0.000         0.000
+ BIOSEX         0.000         0.000         0.000         0.000         0.000
+ EDUY           0.000         0.000         0.000         0.000         0.000
+ RACE           0.000         0.000         0.000         0.000         0.000
+ IDEATION       0.000         0.000         0.000         0.000         0.000
+ IDYS           0.000         0.000         0.000         0.000         0.000
+
+
+           BETA
+              IDEATION      IDYS
+              ________      ________
+ ATTNRYR        0.000         0.000
+ BL_AGE         0.000         0.000
+ BIOSEX         0.000         0.000
+ EDUY           0.000         0.000
+ RACE           0.000         0.000
+ IDEATION       0.000         0.000
+ IDYS           0.000         0.000
+
+
+           PSI
+              ATTNRYR       BL_AGE        BIOSEX        EDUY          RACE
+              ________      ________      ________      ________      ________
+ ATTNRYR        1.000
+ BL_AGE         0.000         0.500
+ BIOSEX         0.000         0.000         0.500
+ EDUY           0.000         0.000         0.000         0.500
+ RACE           0.000         0.000         0.000         0.000         0.500
+ IDEATION       0.000         0.000         0.000         0.000         0.000
+ IDYS           0.000         0.000         0.000         0.000         0.000
+
+
+           PSI
+              IDEATION      IDYS
+              ________      ________
+ IDEATION       0.500
+ IDYS           0.000         0.500
+
+
+     STARTING VALUES FOR THE ADDITIONAL PARAMETERS
+
+
+           NEW/ADDITIONAL PARAMETERS
+              WIND          BIND
+              ________      ________
+                0.500         0.500
+
+
+
+     PRIORS FOR ALL PARAMETERS            PRIOR MEAN      PRIOR VARIANCE     PRIOR STD. DEV.
+
+     Parameter 1~N(0.000,infinity)           0.0000            infinity            infinity
+     Parameter 2~N(0.000,5.000)              0.0000              5.0000              2.2361
+     Parameter 3~N(0.000,5.000)              0.0000              5.0000              2.2361
+     Parameter 4~N(0.000,5.000)              0.0000              5.0000              2.2361
+     Parameter 5~N(0.000,infinity)           0.0000            infinity            infinity
+     Parameter 6~N(0.000,infinity)           0.0000            infinity            infinity
+     Parameter 7~IG(-1.000,0.000)          infinity            infinity            infinity
+     Parameter 8~IG(-1.000,0.000)          infinity            infinity            infinity
+     Parameter 9~IG(-1.000,0.000)          infinity            infinity            infinity
+     Parameter 10~N(0.000,infinity)          0.0000            infinity            infinity
+     Parameter 11~N(0.000,infinity)          0.0000            infinity            infinity
+     Parameter 12~N(0.000,infinity)          0.0000            infinity            infinity
+     Parameter 13~N(0.000,infinity)          0.0000            infinity            infinity
+     Parameter 14~N(0.000,infinity)          0.0000            infinity            infinity
+     Parameter 15~N(0.000,infinity)          0.0000            infinity            infinity
+     Parameter 16~N(0.000,5.000)             0.0000              5.0000              2.2361
+     Parameter 17~N(0.000,5.000)             0.0000              5.0000              2.2361
+     Parameter 18~N(0.000,5.000)             0.0000              5.0000              2.2361
+     Parameter 19~N(0.000,5.000)             0.0000              5.0000              2.2361
+     Parameter 20~N(0.000,5.000)             0.0000              5.0000              2.2361
+     Parameter 21~N(0.000,5.000)             0.0000              5.0000              2.2361
+     Parameter 22~N(0.000,infinity)          0.0000            infinity            infinity
+     Parameter 23~N(0.000,infinity)          0.0000            infinity            infinity
+     Parameter 24~N(0.000,infinity)          0.0000            infinity            infinity
+     Parameter 25~N(0.000,infinity)          0.0000            infinity            infinity
+     Parameter 26~N(0.000,infinity)          0.0000            infinity            infinity
+     Parameter 27~IG(-1.000,0.000)         infinity            infinity            infinity
+     Parameter 28~IW(1.000,5)              infinity            infinity            infinity
+     Parameter 29~IW(0.000,5)              infinity            infinity            infinity
+     Parameter 30~IW(1.000,5)              infinity            infinity            infinity
+     Parameter 31~IW(0.000,5)              infinity            infinity            infinity
+     Parameter 32~IW(0.000,5)              infinity            infinity            infinity
+     Parameter 33~IW(1.000,5)              infinity            infinity            infinity
+     Parameter 34~IW(0.000,5)              infinity            infinity            infinity
+     Parameter 35~IW(0.000,5)              infinity            infinity            infinity
+     Parameter 36~IW(0.000,5)              infinity            infinity            infinity
+     Parameter 37~IW(1.000,5)              infinity            infinity            infinity
+     Parameter 38~IG(-1.000,0.000)         infinity            infinity            infinity
+     Parameter 39~IG(-1.000,0.000)         infinity            infinity            infinity
+     Parameter 40~N(0.000,5.000)             0.0000              5.0000              2.2361
+
+
+TECHNICAL 8 OUTPUT
+
+
+   TECHNICAL 8 OUTPUT FOR BAYES ESTIMATION
+
+     CHAIN    BSEED
+     1        0
+     2        285380
+     3        253358
+     4        93468
+
+                     POTENTIAL       PARAMETER WITH
+     ITERATION    SCALE REDUCTION      HIGHEST PSR
+     100              1.553               20
+     200              1.176               17
+     300              1.199               21
+     400              1.406               27
+     500              1.126               27
+     600              1.135               27
+     700              1.135               27
+     800              1.188               27
+     900              1.129               27
+     1000             1.102               27
+     1100             1.053               27
+     1200             1.080               40
+     1300             1.053               40
+     1400             1.034               20
+     1500             1.047               20
+     1600             1.040               20
+     1700             1.026               20
+     1800             1.023               20
+     1900             1.020               3
+     2000             1.031               27
+     2100             1.045               27
+     2200             1.051               27
+     2300             1.051               27
+     2400             1.057               27
+     2500             1.055               27
+     2600             1.046               27
+     2700             1.041               27
+     2800             1.030               27
+     2900             1.026               27
+     3000             1.026               27
+     3100             1.023               27
+     3200             1.027               27
+     3300             1.026               27
+     3400             1.019               27
+     3500             1.014               27
+     3600             1.011               19
+     3700             1.011               19
+     3800             1.008               19
+     3900             1.008               17
+     4000             1.009               17
+     4100             1.008               17
+     4200             1.007               17
+     4300             1.010               17
+     4400             1.011               17
+     4500             1.007               17
+     4600             1.007               16
+     4700             1.009               16
+     4800             1.012               27
+     4900             1.012               27
+     5000             1.017               27
+     5100             1.020               27
+     5200             1.018               27
+     5300             1.019               27
+     5400             1.018               27
+     5500             1.025               27
+     5600             1.020               27
+     5700             1.015               27
+     5800             1.011               27
+     5900             1.008               27
+     6000             1.007               27
+     6100             1.006               27
+     6200             1.007               18
+     6300             1.006               3
+     6400             1.007               3
+     6500             1.008               3
+     6600             1.007               3
+     6700             1.006               18
+     6800             1.006               21
+     6900             1.007               21
+     7000             1.007               21
+     7100             1.008               21
+     7200             1.007               21
+     7300             1.006               21
+     7400             1.005               21
+     7500             1.006               21
+     7600             1.005               21
+     7700             1.004               3
+     7800             1.005               3
+     7900             1.004               21
+     8000             1.005               3
+     8100             1.005               27
+     8200             1.005               27
+     8300             1.004               27
+     8400             1.004               27
+     8500             1.004               27
+     8600             1.003               3
+     8700             1.003               3
+     8800             1.003               17
+     8900             1.004               3
+     9000             1.004               21
+     9100             1.004               21
+     9200             1.003               3
+     9300             1.003               3
+     9400             1.004               17
+     9500             1.004               17
+     9600             1.005               17
+     9700             1.004               17
+     9800             1.004               21
+     9900             1.005               21
+     10000            1.006               21
+     10100            1.006               20
+     10200            1.007               20
+     10300            1.007               20
+     10400            1.008               20
+     10500            1.008               40
+     10600            1.008               40
+     10700            1.010               40
+     10800            1.010               40
+     10900            1.010               40
+     11000            1.011               40
+     11100            1.010               40
+     11200            1.010               40
+     11300            1.011               40
+     11400            1.013               40
+     11500            1.012               40
+     11600            1.011               40
+     11700            1.010               40
+     11800            1.012               40
+     11900            1.012               40
+     12000            1.014               40
+     12100            1.015               40
+     12200            1.013               40
+     12300            1.014               40
+     12400            1.016               40
+     12500            1.017               40
+     12600            1.017               40
+     12700            1.016               40
+     12800            1.016               40
+     12900            1.016               40
+     13000            1.016               40
+     13100            1.014               40
+     13200            1.013               40
+     13300            1.012               40
+     13400            1.012               40
+     13500            1.013               40
+     13600            1.014               40
+     13700            1.014               40
+     13800            1.017               40
+     13900            1.018               40
+     14000            1.018               40
+     14100            1.017               40
+     14200            1.017               40
+     14300            1.016               40
+     14400            1.017               40
+     14500            1.016               40
+     14600            1.016               40
+     14700            1.017               40
+     14800            1.017               40
+     14900            1.016               40
+     15000            1.016               40
+     15100            1.017               40
+     15200            1.019               40
+     15300            1.020               40
+     15400            1.018               40
+     15500            1.017               40
+     15600            1.016               40
+     15700            1.014               40
+     15800            1.012               40
+     15900            1.013               40
+     16000            1.013               40
+     16100            1.014               40
+     16200            1.014               40
+     16300            1.012               40
+     16400            1.011               40
+     16500            1.010               40
+     16600            1.010               40
+     16700            1.010               40
+     16800            1.010               40
+     16900            1.009               40
+     17000            1.008               27
+     17100            1.009               27
+     17200            1.009               27
+     17300            1.009               27
+     17400            1.008               27
+     17500            1.007               27
+     17600            1.007               27
+     17700            1.007               27
+     17800            1.007               27
+     17900            1.007               40
+     18000            1.007               40
+     18100            1.006               40
+     18200            1.006               40
+     18300            1.006               40
+     18400            1.006               40
+     18500            1.006               40
+     18600            1.006               40
+     18700            1.007               40
+     18800            1.008               40
+     18900            1.008               40
+     19000            1.008               40
+     19100            1.008               40
+     19200            1.007               40
+     19300            1.007               40
+     19400            1.007               40
+     19500            1.007               40
+     19600            1.007               40
+     19700            1.007               40
+     19800            1.006               40
+     19900            1.005               40
+     20000            1.005               40
+     20100            1.005               40
+     20200            1.005               40
+     20300            1.005               40
+     20400            1.006               40
+     20500            1.006               40
+     20600            1.005               40
+     20700            1.005               40
+     20800            1.005               40
+     20900            1.005               40
+     21000            1.005               40
+     21100            1.005               40
+     21200            1.005               40
+     21300            1.005               40
+     21400            1.004               40
+     21500            1.004               40
+     21600            1.004               40
+     21700            1.004               40
+     21800            1.004               40
+     21900            1.005               40
+     22000            1.005               40
+     22100            1.004               40
+     22200            1.004               40
+     22300            1.005               40
+     22400            1.004               40
+     22500            1.004               40
+     22600            1.004               40
+     22700            1.003               40
+     22800            1.003               40
+     22900            1.003               40
+     23000            1.003               40
+     23100            1.003               40
+     23200            1.003               40
+     23300            1.003               40
+     23400            1.004               40
+     23500            1.003               40
+     23600            1.003               40
+     23700            1.003               40
+     23800            1.003               40
+     23900            1.002               40
+     24000            1.002               40
+     24100            1.002               40
+     24200            1.002               20
+     24300            1.002               20
+     24400            1.002               20
+     24500            1.002               40
+     24600            1.002               40
+     24700            1.003               40
+     24800            1.002               40
+     24900            1.002               40
+     25000            1.002               20
+     25100            1.002               20
+     25200            1.002               40
+     25300            1.002               40
+     25400            1.002               40
+     25500            1.002               27
+     25600            1.003               27
+     25700            1.003               27
+     25800            1.003               27
+     25900            1.003               27
+     26000            1.004               40
+     26100            1.004               27
+     26200            1.003               40
+     26300            1.003               40
+     26400            1.003               40
+     26500            1.003               40
+     26600            1.003               40
+     26700            1.003               40
+     26800            1.003               40
+     26900            1.002               40
+     27000            1.003               40
+     27100            1.003               27
+     27200            1.003               27
+     27300            1.002               27
+     27400            1.003               27
+     27500            1.003               27
+     27600            1.003               27
+     27700            1.002               27
+     27800            1.002               27
+     27900            1.001               40
+     28000            1.001               40
+     28100            1.001               40
+     28200            1.001               40
+     28300            1.001               40
+     28400            1.001               27
+     28500            1.001               27
+     28600            1.001               40
+     28700            1.001               40
+     28800            1.001               40
+     28900            1.001               40
+     29000            1.001               40
+     29100            1.001               40
+     29200            1.001               40
+     29300            1.001               40
+     29400            1.001               40
+     29500            1.001               40
+     29600            1.001               40
+     29700            1.001               40
+     29800            1.001               40
+     29900            1.001               40
+     30000            1.001               40
+
+
+DIAGRAM INFORMATION
+
+  Mplus diagrams are currently not available for multilevel analysis.
+  No diagram output was produced.
+
+
+     Beginning Time:  23:42:26
+        Ending Time:  23:44:50
+       Elapsed Time:  00:02:24
+
+
+
+MUTHEN & MUTHEN
+3463 Stoner Ave.
+Los Angeles, CA  90066
+
+Tel: (310) 391-9971
+Fax: (310) 391-8971
+Web: www.StatModel.com
+Support: Support@StatModel.com
+
+Copyright (c) 1998-2019 Muthen & Muthen

@@ -56,3 +56,8 @@ If you already cloned a local copy of the repo, you can get the latest updates u
   - [Model selection, evidence, and maximal models](06_ModelSelection/model_comparison.html)
   - [Flanker model building](06_ModelSelection/flanker_rt_mlm_publication.html)
   
+## 13May2021: Incorporating neural measures into MLMs of behavior (Alex Dombrovski) 
+  - [fMRI hippocampal regression coefficients in trial-wise MLMs](07_BrainBehavior/beta_cluster_behavior_analyses_mlm_class.html)
+
+## 27May2021: Multilevel SEM (Tim Allen)
+  - [MSEM Tutorial](08_MSEM/multilevel_sem_v5.html)

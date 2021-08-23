@@ -1,0 +1,26 @@
+TITLE:
+this is an example of a two-level 
+	regression analysis for a continuous 
+	dependent variable with a random slope and a latent covariate
+DATA:
+FILE = "ex3.dat";
+ 
+VARIABLE:
+NAMES = ID idys Ideation NA_F; 
+ MISSING=.;
+ BETWEEN = NA_F;
+	  CLUSTER = ID;
+DEFINE:
+CENTER idys (GRANDMEAN);
+ANALYSIS:
+TYPE = TWOLEVEL RANDOM;
+    ESTIMATOR=BAYES;
+MODEL:
+
+    %WITHIN%	
+ 	    s | Ideation ON idys;
+	  %BETWEEN%	
+	    Ideation s ON NA_F idys;
+	    Ideation WITH s;
+OUTPUT:
+STDYX RESIDUAL;

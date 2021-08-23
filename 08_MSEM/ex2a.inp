@@ -1,0 +1,24 @@
+TITLE:
+Same model as previous, but now we use a latent variable to represent Int Dys
+DATA:
+FILE = "ex2a.dat";
+ 
+VARIABLE:
+NAMES = ID IDys_Wor IDys_Fam IDys_Soc Ideation NA_F; 
+ MISSING=.;
+ BETWEEN = NA_F;
+	  CLUSTER = ID;
+ANALYSIS:
+TYPE = TWOLEVEL RANDOM;
+    ESTIMATOR=MLR;
+MODEL:
+
+    %WITHIN%	
+      idysw BY IDys_Wor IDys_Fam IDys_Soc;
+ 	    Ideation ON idysw;
+	  %BETWEEN%	
+	    idysb BY IDys_Wor IDys_Fam IDys_Soc;
+	    Ideation ON NA_F idysb;
+  
+OUTPUT:
+STDYX RESIDUAL;

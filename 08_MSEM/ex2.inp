@@ -1,0 +1,27 @@
+TITLE:
+this is an example of a two-level 
+	  regression analysis for a continuous 
+	  dependent variable with a random intercept and a latent covariate
+DATA:
+FILE = "ex2.dat";
+ 
+VARIABLE:
+NAMES = ID idys Ideation NA_F; 
+ MISSING=.;
+ BETWEEN = NA_F;
+	  CLUSTER = ID;
+DEFINE:
+CENTER idys (GRANDMEAN);
+ANALYSIS:
+TYPE = TWOLEVEL;
+    ESTIMATOR=MLR;
+MODEL:
+
+    %WITHIN%
+	    Ideation ON idys (gamma10);
+	    idys;
+	  %BETWEEN%
+	    Ideation ON NA_F 
+	         idys (gamma01);
+OUTPUT:
+STDYX RESIDUAL;

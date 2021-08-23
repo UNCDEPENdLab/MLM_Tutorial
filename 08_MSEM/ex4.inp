@@ -1,0 +1,26 @@
+TITLE:
+this is the same model as in the previous example but adds time (FUY) as a within-person covariate
+DATA:
+FILE = "ex4.dat";
+ 
+VARIABLE:
+NAMES = ID FUY idys Ideation NA_F; 
+ MISSING=.;
+ BETWEEN = NA_F;
+    WITHIN = FUY;
+	  CLUSTER = ID;
+DEFINE:
+CENTER idys (GRANDMEAN);
+ANALYSIS:
+TYPE = TWOLEVEL RANDOM;
+    ESTIMATOR=BAYES;
+MODEL:
+
+    %WITHIN%	
+ 	    s | Ideation ON idys;
+ 	    Ideation on FUY;
+	  %BETWEEN%	
+	    Ideation s ON NA_F idys;
+	    Ideation WITH s;
+OUTPUT:
+STDYX RESIDUAL;

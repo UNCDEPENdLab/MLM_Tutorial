@@ -1,0 +1,427 @@
+Mplus VERSION 8.6 (Mac)
+MUTHEN & MUTHEN
+08/23/2021   1:53 PM
+
+INPUT INSTRUCTIONS
+
+  TITLE:
+  this is the same model as in the previous example but adds time (FUY) as a within-person c
+  DATA:
+  FILE = "ex4.dat";
+
+  VARIABLE:
+  NAMES = ID FUY idys Ideation NA_F;
+   MISSING=.;
+   BETWEEN = NA_F;
+      WITHIN = FUY;
+  	  CLUSTER = ID;
+  DEFINE:
+  CENTER idys (GRANDMEAN);
+  ANALYSIS:
+  TYPE = TWOLEVEL RANDOM;
+      ESTIMATOR=BAYES;
+  MODEL:
+
+      %WITHIN%	
+   	    s | Ideation ON idys;
+   	    Ideation on FUY;
+  	  %BETWEEN%	
+  	    Ideation s ON NA_F idys;
+  	    Ideation WITH s;
+  OUTPUT:
+  STDYX RESIDUAL;
+
+
+
+*** WARNING
+  Input line exceeded 90 characters. Some input may be truncated.
+  this is the same model as in the previous example but adds time (FUY) as a within-person co
+*** WARNING in MODEL command
+  In the MODEL command, the x variable on the WITHIN level has been turned into a
+  y variable to enable latent variable decomposition.  This variable will be treated
+  as a y-variable on both levels:  IDYS
+*** WARNING
+  One or more individual-level variables have no variation within a
+  cluster for the following clusters.
+
+     Variable   Cluster IDs with no within-cluster variation
+
+      IDYS        2501 3163 6415 6841 7005 7037 7148 7155 7164 7175 7204 7235 7236 7241 7298 7304
+                  7305 7306 7307 7308 7309 7310 7311 7312 7313 7317 7318 7320 7323 7324 7325 7331
+                  7332 7334 7336 7337 7338 7339 7340 7343 7344 7345 7346 7365 7367 7373 7375 7376
+                  7377 7379 7381 7385 7206 7207 7211 7215 7216 7217 7219 7223 7224 7227 7229 7231
+                  7233 7237 7238 7240 2155 7251 7268 7269 7272 7275 7278 7279 7285 7292 7299 7126
+                  7154 7159 2122 7167 7168 2041 7189 7193 7201 7205 6847 7095 7098 7111 7114 7118
+                  7121 7173 7180 7183 7185 7187 7188 7190 7192 7194 7195 7196 7197 7203 7209
+      IDEATION    2012 7207 7215 7231 7251 7279 6930 6644 6978 7001 6645 7126 6831 6840 7193 6497
+                  6551 2031 6891 6916 7185 7190 6684 6398 6767 6768 6667 6624 6553 6583 6898 6019
+                  6608 6854 7048 6991 7014 7017 7021 6543 6803 6605 6250 6924 6505 6819 6659 2392
+                  6593 6693 6672 6611 6508 2021
+
+   3 WARNING(S) FOUND IN THE INPUT INSTRUCTIONS
+
+
+
+
+this is the same model as in the previous example but adds time (FUY) as a within-person c
+
+SUMMARY OF ANALYSIS
+
+Number of groups                                                 1
+Number of observations                                        2573
+
+Number of dependent variables                                    2
+Number of independent variables                                  2
+Number of continuous latent variables                            1
+
+Observed dependent variables
+
+  Continuous
+   IDYS        IDEATION
+
+Observed independent variables
+   FUY         NA_F
+
+Continuous latent variables
+   S
+
+Variables with special functions
+
+  Cluster variable      ID
+
+  Within variables
+   FUY
+
+  Between variables
+   NA_F
+
+  Centering (GRANDMEAN)
+   IDYS
+
+
+Estimator                                                    BAYES
+Specifications for Bayesian Estimation
+  Point estimate                                            MEDIAN
+  Number of Markov chain Monte Carlo (MCMC) chains               2
+  Random seed for the first chain                                0
+  Starting value information                           UNPERTURBED
+  Algorithm used for Markov chain Monte Carlo           GIBBS(PX1)
+  Convergence criterion                                  0.500D-01
+  Maximum number of iterations                               50000
+  K-th iteration used for thinning                               1
+
+Input data file(s)
+  ex4.dat
+Input data format  FREE
+
+
+SUMMARY OF DATA
+
+     Number of clusters                        453
+
+       Size (s)    Cluster ID with Size s
+
+          1        2012 2035 2094 2097 2105 2133 2167 2255 2350 2352 2371
+                   2472 2489 2501 2690 3017 3104 3163 3229 6233 6345 6359
+                   6367 6415 6429 6500 6577 6591 6625 6635 6660 6691 6728
+                   6826 6841 6846 6876 6881 6893 6901 6915 6934 6935 6939
+                   6940 6943 6945 7005 7010 7015 7037 7038 7043 7060 7064
+                   7092 7148 7155 7164 7175 7204 7235 7236 7241 7298 7304
+                   7305 7306 7307 7308 7309 7310 7311 7312 7313 7317 7318
+                   7320 7323 7324 7325 7331 7332 7334 7336 7337 7338 7339
+                   7340 7343 7344 7345 7346 7365 7367 7373 7375 7376 7377
+                   7379 7381 7385
+          2        7206 7207 7211 7215 7216 7217 7219 7223 7224 7227 7229
+                   7231 7233 2137 6476 7237 7238 7240 2155 7251 7268 7269
+                   7272 7275 7278 7279 7285 7292 2075 7299 6186 6930 6610
+                   2088 6234 6641 6642 6644 6960 6978 7001 6645 6244 6687
+                   7032 6299 2549 6740 7047 6787 6798 7071 2684 7126 6831
+                   7154 6840 7159 2122 7167 7168 2041 7189 7193 7201 6857
+                   7205
+          3        2388 6820 6497 2405 6540 6551 3166 6847 2031 7095 7098
+                   7111 7114 7118 7121 6600 2234 6882 6891 2089 2523 6910
+                   2547 7173 6916 7180 7183 7185 7187 7188 6926 7190 7192
+                   2324 7194 7195 7196 7197 2615 7203 2632 2141 6684 6398
+                   7209 2009 2162 6972 6436 6996 6753 6767 6768 6466 7030
+          4        6990 6796 6900 6514 7008 6195 6214 6667 6405 7034 2215
+                   6845 2498 2028 6616 7061 6942 7066 6871 7073 7074 7080
+                   7086 7091 6944 6295 6951 7100 7101 6166 6181 2334
+          5        6128 2042 6624 6171 7068 6553 2438 6583 7013 6898 7016
+                   7027 2113 7031 6019 6608 7035 6912 6954 7042 6914 6854
+                   7048
+          6        6725 6929 6451 2387 6991 6746 6541 2412 2566 3107 6714
+                   7014 6865 6721 7017 7018 7021 6724
+          7        6628 6858 6783 2212 6872 6708 6543 6803 6605 6821 6250
+                   6949 6552 6654 6655 6961 2235 6974 6747 3075 6313 6924
+                   6999
+          8        3228 2016 6800 2496 6197 6102 6739 6617 6742 6622 6842
+                   6946 6215 6676 2694 2697 2502 6640
+          9        6815 6694 6917 6918 6869 6695 2481 6535 6172 6668 2602
+                   6228 2356 6689 6853 6907 6909 2002 6856 6810 6955
+         10        6679 6505 6819 6659 6759 2147 6515 6727 6018 6793 6173
+                   6888 6699 6706 6745 6933
+         11        6750 6806 6809 6267 6757 6084 6762 6657 6212 6544 6383
+                   6791 6307 6521 6115 6582
+         12        2392 6780 6623 2210 2185 6340 6732
+         13        6650 6701 6733 6619
+         14        6593 6051 6063 6693 3156 6523 6662 3230 6353 6672 6424
+                   6590 6239
+         15        6620 6404 6486 6325 6611 6441 6391 6223
+         16        6475 6281 6538 6508 6510 2069 6489 6298
+         17        2436 6254 2479 2241 6413
+         18        2021 6075 6199 2253
+         19        2385 6183 6055
+         20        6156 2630
+         21        6168 6072 2049 2029 6027
+         22        2468 2363 3196
+
+
+
+COVARIANCE COVERAGE OF DATA
+
+Minimum covariance coverage value   0.100
+
+     Number of missing data patterns             3
+
+
+     PROPORTION OF DATA PRESENT
+
+
+           Covariance Coverage
+              IDYS          IDEATION      FUY           NA_F
+              ________      ________      ________      ________
+ IDYS           0.698
+ IDEATION       0.684         0.986
+ FUY            0.698         0.986         1.000
+ NA_F           0.698         0.986         1.000         1.000
+
+
+
+UNIVARIATE SAMPLE STATISTICS
+
+
+     UNIVARIATE HIGHER-ORDER MOMENT DESCRIPTIVE STATISTICS
+
+         Variable/         Mean/     Skewness/   Minimum/ % with                Percentiles
+        Sample Size      Variance    Kurtosis    Maximum  Min/Max      20%/60%    40%/80%    Median
+
+     IDYS                  0.000       0.469      -1.289    0.06%      -0.528     -0.202     -0.045
+            1797.000       0.343      -0.016       2.396    0.06%       0.111      0.481
+     IDEATION              4.351       1.814       0.000   56.84%       0.000      0.000      0.000
+            2537.000      52.972       2.683      37.000    0.08%       1.000      9.500
+     FUY                   6.658       1.062       0.000   16.83%       1.000      3.000      5.000
+            2573.000      41.134       0.601      30.000    0.04%       7.000     12.000
+     NA_F                 -0.002      -0.301      -3.184    0.22%      -0.576     -0.023      0.082
+             453.000       0.695       1.591       3.075    0.22%       0.167      0.531
+
+
+THE MODEL ESTIMATION TERMINATED NORMALLY
+
+     USE THE FBITERATIONS OPTION TO INCREASE THE NUMBER OF ITERATIONS BY A FACTOR
+     OF AT LEAST TWO TO CHECK CONVERGENCE AND THAT THE PSR VALUE DOES NOT INCREASE.
+
+
+
+MODEL FIT INFORMATION
+
+Number of Free Parameters                              14
+
+Information Criteria
+
+          Deviance (DIC)                        17546.734
+          Estimated Number of Parameters (pD)     447.180
+
+
+
+MODEL RESULTS
+
+                                Posterior  One-Tailed         95% C.I.
+                    Estimate       S.D.      P-Value   Lower 2.5%  Upper 2.5%  Significance
+
+Within Level
+
+ IDEATION   ON
+    FUY               -0.178       0.019      0.000      -0.214      -0.139      *
+
+ Variances
+    IDYS               0.153       0.006      0.000       0.143       0.166      *
+
+ Residual Variances
+    IDEATION          25.553       0.877      0.000      23.983      27.390      *
+
+Between Level
+
+ S          ON
+    NA_F               1.096       0.559      0.020       0.052       2.219      *
+    IDYS               0.734       1.449      0.305      -2.641       3.198
+
+ IDEATION   ON
+    NA_F               0.914       0.301      0.002       0.388       1.514      *
+    IDYS               1.742       0.687      0.005       0.302       3.006      *
+
+ IDEATION WITH
+    S                 23.856       2.998      0.000      18.994      31.007      *
+
+ Means
+    IDYS               0.073       0.026      0.004       0.023       0.125      *
+
+ Intercepts
+    IDEATION           5.969       0.268      0.000       5.469       6.520      *
+    S                  7.274       0.519      0.000       6.258       8.253      *
+
+ Variances
+    IDYS               0.183       0.017      0.000       0.155       0.223      *
+
+ Residual Variances
+    IDEATION          13.826       1.914      0.000      10.808      18.137      *
+    S                 44.602       7.539      0.000      32.044      61.683      *
+
+
+STANDARDIZED MODEL RESULTS
+
+
+STDYX Standardization
+
+                                Posterior  One-Tailed         95% C.I.
+                    Estimate       S.D.      P-Value   Lower 2.5%  Upper 2.5%  Significance
+
+Within-Level Standardized Estimates Averaged Over Clusters
+
+ S | IDEATION ON
+    IDYS               0.398       0.020      0.000       0.361       0.435      *
+
+ IDEATION   ON
+    FUY               -0.072       0.008      0.000      -0.088      -0.057      *
+
+ Variances
+    IDYS               1.000       0.000      0.000       1.000       1.000
+
+ Residual Variances
+    IDEATION           0.723       0.018      0.000       0.688       0.756      *
+
+Between Level
+
+ S          ON
+    NA_F               0.100       0.052      0.020       0.005       0.206      *
+    IDYS               0.048       0.091      0.305      -0.165       0.206
+
+ IDEATION   ON
+    NA_F               0.148       0.049      0.002       0.062       0.250      *
+    IDYS               0.195       0.075      0.005       0.034       0.329      *
+
+ IDEATION WITH
+    S                  0.966       0.022      0.000       0.915       0.993      *
+
+ Means
+    IDYS               0.169       0.061      0.004       0.054       0.293      *
+
+ Intercepts
+    IDEATION           1.550       0.104      0.000       1.361       1.765      *
+    S                  1.072       0.096      0.000       0.899       1.269      *
+
+ Variances
+    IDYS               1.000       0.000      0.000       1.000       1.000
+
+ Residual Variances
+    IDEATION           0.935       0.026      0.000       0.872       0.974      *
+    S                  0.980       0.015      0.000       0.937       0.998      *
+
+
+R-SQUARE
+
+Within-Level R-Square Averaged Across Clusters
+
+                                Posterior  One-Tailed         95% C.I.
+    Variable        Estimate       S.D.      P-Value   Lower 2.5%  Upper 2.5%
+
+    IDEATION           0.277       0.018      0.000       0.244       0.312
+
+Between Level
+
+                                Posterior  One-Tailed         95% C.I.
+    Variable        Estimate       S.D.      P-Value   Lower 2.5%  Upper 2.5%
+
+    IDEATION           0.065       0.026      0.000       0.026       0.128
+
+                                Posterior  One-Tailed         95% C.I.
+    Variable        Estimate       S.D.      P-Value   Lower 2.5%  Upper 2.5%
+
+    S                  0.020       0.015      0.000       0.002       0.063
+
+
+RESIDUAL OUTPUT
+
+
+     ESTIMATED MODEL
+
+
+     AVERAGE CLUSTER ESTIMATES
+
+
+           Means
+              IDYS          IDEATION      FUY           NA_F
+              ________      ________      ________      ________
+                0.074         5.459         3.655        -0.002
+
+
+           Covariances
+              IDYS          IDEATION      FUY           NA_F
+              ________      ________      ________      ________
+ IDYS           0.153
+ IDEATION       1.070        40.866
+ FUY            0.000        -2.050        11.276
+ NA_F           0.000         0.000         0.000         0.000
+
+
+           Correlations
+              IDYS          IDEATION      FUY           NA_F
+              ________      ________      ________      ________
+ IDYS           1.000
+ IDEATION       0.397         1.000
+ FUY            0.000        -0.073         1.000
+ NA_F           0.000         0.000         0.000         1.000
+
+
+     BETWEEN LEVEL
+
+
+           Means
+              IDYS          IDEATION      FUY           NA_F
+              ________      ________      ________      ________
+                0.073         6.094         0.000        -0.002
+
+
+           Covariances
+              IDYS          IDEATION      FUY           NA_F
+              ________      ________      ________      ________
+ IDYS           0.183
+ IDEATION       0.320        14.963
+ FUY            0.000         0.000         0.000
+ NA_F           0.000         0.635         0.000         0.695
+
+
+           Correlations
+              IDYS          IDEATION      FUY           NA_F
+              ________      ________      ________      ________
+ IDYS           1.000
+ IDEATION       0.193         1.000
+ FUY            0.000         0.000         0.000
+ NA_F           0.000         0.197         0.000         1.000
+
+
+     Beginning Time:  13:53:45
+        Ending Time:  13:54:12
+       Elapsed Time:  00:00:27
+
+
+
+MUTHEN & MUTHEN
+3463 Stoner Ave.
+Los Angeles, CA  90066
+
+Tel: (310) 391-9971
+Fax: (310) 391-8971
+Web: www.StatModel.com
+Support: Support@StatModel.com
+
+Copyright (c) 1998-2021 Muthen & Muthen

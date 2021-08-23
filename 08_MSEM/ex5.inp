@@ -1,0 +1,50 @@
+!Final Version of Model 1 -- With Covariates
+DATA: FILE is NAC_mplus_nohead.csv;
+DEFINE: STANDARDIZE IDys Ideation FUY BL_AGE BIOSEX eduy race;
+VARIABLE: NAMES ARE ID FUID FUY finalTIS lfdemoY HOSnryr ATTnryr natt_yr LETH_YM
+BL_AGE BIOSEX BECKD SCLINT HAM16 BISNP BISCOG BISMOT BUSANT P NS23 NS234 
+COOP HA HA124 BG_AGG Ideation SSI_C SSI1 SSI2 SSI3 SSI4 SSI5 IDys SAS_WORK 
+SAS_FAM SAS_SOC marsta eduy eduf work occup incomel pincome race COOP14; 
+CLUSTER = ID;
+MISSING = all (9999);
+CATEGORICAL IS ATTnryr;
+USEVAR = ATTnryr Ideation IDys FUY BL_AGE BIOSEX eduy race;
+WITHIN = FUY; 
+BETWEEN = BL_AGE BIOSEX eduy race;
+ANALYSIS: TYPE = TWOLEVEL;
+          PROCESSORS = 4;
+          CHAINS=4;
+          ESTIMATOR=BAYES;
+          BITERATIONS=(30000);
+          KOLMOGOROV = 100;
+MODEL:
+%WITHIN%
+Ideation on IDys (aw);
+ATTnryr on Ideation (bw); 
+ATTnryr on IDys (cw);
+ATTnryr on FUY; 
+Ideation on FUY;
+
+IDys Ideation FUY;
+
+%BETWEEN%
+Ideation ON IDys (ab);
+ATTnryr on Ideation (bb);
+ATTnryr on IDys (cb);
+
+ATTnryr on BL_AGE BIOSEX eduy race;
+Ideation on BL_AGE BIOSEX eduy race;
+
+IDys Ideation;
+BL_AGE BIOSEX eduy race;
+
+BL_AGE WITH BIOSEX eduy race;
+BIOSEX WITH eduy race;
+eduy WITH race;
+
+MODEL CONSTRAINT:
+NEW (WIND BIND);
+WIND = aw*bw;
+BIND = ab*bb;
+
+OUTPUT: TECH1 TECH8 STANDARDIZED;

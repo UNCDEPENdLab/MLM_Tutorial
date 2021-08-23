@@ -1,0 +1,173 @@
+!Final Version of Model 3 -- With Covariates
+DATA: FILE is NAC_mplus_nohead.csv;
+DEFINE: STANDARDIZE IDys Ideation FUY BL_AGE BIOSEX eduy race;
+VARIABLE: NAMES ARE ID FUID FUY finalTIS lfdemoY HOSnryr ATTnryr natt_yr LETH_YM
+BL_AGE BIOSEX BECKD SCLINT HAM16 BISNP BISCOG BISMOT BUSANT P NS23 NS234 
+COOP HA HA124 BG_AGG Ideation SSI_C SSI1 SSI2 SSI3 SSI4 SSI5 IDys SAS_WORK 
+SAS_FAM SAS_SOC marsta eduy eduf work occup incomel pincome race COOP14; 
+CLUSTER = ID;
+MISSING = all (9999);
+CATEGORICAL IS ATTnryr;
+USEVAR = ATTnryr Ideation IDys FUY
+BISNP BISMOT P NS23
+BECKD SCLINT HAM16 HA124
+!BG_AGG BUSANT COOP
+BL_AGE BIOSEX eduy race;
+WITHIN = FUY; 
+BETWEEN = BISNP BISMOT P NS23
+BECKD SCLINT HAM16 HA124
+!BG_AGG BUSANT COOP
+BL_AGE BIOSEX eduy race;
+ANALYSIS: TYPE = TWOLEVEL RANDOM;
+          PROCESSORS = 4;
+          CHAINS=4;
+          ESTIMATOR=BAYES;
+          BITERATIONS=(15000);
+          KOLMOGOROV = 100;
+MODEL:
+%WITHIN%
+sa | Ideation on IDys;
+sb | ATTnryr on Ideation;
+ATTnryr on IDys (c);
+ATTnryr on FUY;
+Ideation on FUY;
+
+IDys Ideation FUY;
+
+%BETWEEN%
+DIS BY BISNP* BISMOT P NS23; DIS@1;
+NEG BY BECKD* SCLINT HAM16 HA124; NEG@1;
+
+[DIS@0];
+[NEG@0];
+
+sa sb IDys Ideation ATTnryr;
+
+Ideation ON IDys (ab);
+ATTnryr on Ideation (bb);
+ATTnryr on IDys (cb);
+
+!main effect of SSI/SAS
+[sa](a1);
+[sb](b1);
+
+!interactions
+sa on NEG (a5);
+sa on DIS (a6);
+
+sb on NEG (b5);
+sb on DIS (b6); 
+
+!main effects
+ATTnryr ON DIS (b2);
+ATTnryr ON NEG (b3);
+
+Ideation ON DIS (a2);
+Ideation ON NEG (a3);
+
+! slope covariance
+sa WITH sb; 
+
+!interpersonal with trait
+IDys WITH DIS NEG;
+
+[ATTnryr$1] (b0);
+[Ideation] (a0);
+
+!covariates
+ATTnryr ON BL_AGE BIOSEX eduy race;
+Ideation ON BL_AGE BIOSEX eduy race;
+
+sa ON BL_AGE BIOSEX eduy race;
+sb ON BL_AGE BIOSEX eduy race;
+
+BL_AGE WITH BIOSEX eduy race;
+BIOSEX WITH eduy race;
+eduy WITH race;
+
+MODEL CONSTRAINT:
+NEW(NEG_LO NEG_MED NEG_HI
+    NEG124 NEG123
+
+    DIS_LO DIS_MED DIS_HI
+    DIS33 DIS32 DIS34
+
+    A_LON A_MEDN A_HIN
+    A_124N A_123N
+
+    B_LOD B_MEDD B_HID
+    B_33D B_32D B_34D
+
+    ILOD_LON IMED_LON IHID_LON
+    ILOD_MEN IMED_MEN IHID_MEN
+    ILOD_HIN IMED_HIN IHID_HIN
+
+    BIND); 
+
+BIND = ab*bb;
+!hi/lo N
+NEG_LO = -1;
+NEG_MED = 0;
+NEG_HI = 1;
+
+!hi/lo D
+DIS_LO = -1;
+DIS_MED = 0;
+DIS_HI = 1;
+
+DIS33 = .33;
+DIS32 = .32;
+DIS34 = .34;
+NEG124 = -1.24;
+NEG123 = -1.23;
+
+! moderation at each level
+
+A_LON = (a1 + a5*NEG_LO);
+A_MEDN = (a1 + a5*NEG_MED);
+A_HIN = (a1 + a5*NEG_HI);
+
+!1.5 SDs below
+A_124N = (a1 + a5*NEG124);
+A_123N = (a1 + a5*NEG123);
+
+B_LOD = (b1 + b6*DIS_LO);
+B_MEDD = (b1 + b6*DIS_MED);
+B_HID = (b1 + b6*DIS_HI);
+
+! +.1, .3 SD
+B_33D = (b1 + b6*DIS33);
+B_32D = (b1 + b6*DIS32);
+B_34D = (b1 + b6*DIS34);
+
+
+ILOD_LON = (b1+b6*DIS_LO)*(a1+a5*NEG_LO);
+IMED_LON = (b1+b6*DIS_MED)*(a1+a5*NEG_LO);
+IHID_LON = (b1+b6*DIS_HI)*(a1+a5*NEG_LO);
+ILOD_MEN = (b1+b6*DIS_LO)*(a1+a5*NEG_MED);
+IMED_MEN = (b1+b6*DIS_MED)*(a1+a5*NEG_MED);
+IHID_MEN = (b1+b6*DIS_HI)*(a1+a5*NEG_MED);
+ILOD_HIN = (b1+b6*DIS_LO)*(a1+a5*NEG_HI);
+IMED_HIN = (b1+b6*DIS_MED)*(a1+a5*NEG_HI);
+IHID_HIN = (b1+b6*DIS_HI)*(a1+a5*NEG_HI);
+
+PLOT(PLOD_LON PMED_LON PHID_LON PLOD_MEN PMED_MEN PHID_MEN
+PLOD_HIN PMED_HIN PHID_HIN);
+
+!loop over actual range of the data
+LOOP(SAS,-2.2,4.09,0.1);
+
+PLOD_LON = ILOD_LON*SAS;
+PMED_LON = IMED_LON*SAS;
+PHID_LON = IHID_LON*SAS;
+
+PLOD_MEN = ILOD_MEN*SAS;
+PMED_MEN = IMED_MEN*SAS;
+PHID_MEN = IHID_MEN*SAS;
+
+PLOD_HIN = ILOD_HIN*SAS;
+PMED_HIN = IMED_HIN*SAS;
+PHID_HIN = IHID_HIN*SAS;
+
+PLOT: TYPE = PLOT2;
+OUTPUT: TECH1 TECH8 STANDARDIZED;

@@ -1,0 +1,422 @@
+Mplus VERSION 8.6 (Mac)
+MUTHEN & MUTHEN
+08/23/2021   1:53 PM
+
+INPUT INSTRUCTIONS
+
+  TITLE:
+  this is an example of a two-level
+  	  regression analysis for a continuous
+  	  dependent variable with a random intercept and an observed covariate
+  DATA:
+  FILE = "ex1.dat";
+
+  VARIABLE:
+  NAMES = ID idys_pm idys_pc Ideation NA_F;
+   MISSING=.;
+   WITHIN = idys_pc;
+  	  BETWEEN = NA_F idys_pm;
+  	  CLUSTER = ID;
+  DEFINE:
+  CENTER idys_pc (GRANDMEAN);
+  ANALYSIS:
+  TYPE = TWOLEVEL;
+      ESTIMATOR=MLR;
+  MODEL:
+  %WITHIN%	
+  	  Ideation ON idys_pc;
+  	  %BETWEEN%
+  	  Ideation ON NA_F idys_pm;
+  OUTPUT:
+  STDYX RESIDUAL;
+
+
+
+*** WARNING
+  One or more individual-level variables have no variation within a
+  cluster for the following clusters.
+
+     Variable   Cluster IDs with no within-cluster variation
+
+      IDEATION    6916 6926 6497 2031 7001 6644 6551 6645 6891 7042 6767 6768 6541 7014 7017 7021
+                  6803 6821 6991 6583 6667 6898 6543 6019 6608 6924 6553 6854 6624 6250 6676 6605
+                  6819 6659 6672 6505 2392 6693 6593 6611 6508 2021 3196
+
+*** WARNING
+  Data set contains cases with missing on x-variables.
+  These cases were not included in the analysis.
+  Number of cases with missing on x-variables:  780
+*** WARNING
+  Data set contains cases with missing on all variables except
+  x-variables.  These cases were not included in the analysis.
+  Number of cases with missing on all variables except x-variables:  36
+   3 WARNING(S) FOUND IN THE INPUT INSTRUCTIONS
+
+
+
+
+this is an example of a two-level
+regression analysis for a continuous
+dependent variable with a random intercept and an observed covariate
+
+SUMMARY OF ANALYSIS
+
+Number of groups                                                 1
+Number of observations                                        1761
+
+Number of dependent variables                                    1
+Number of independent variables                                  3
+Number of continuous latent variables                            0
+
+Observed dependent variables
+
+  Continuous
+   IDEATION
+
+Observed independent variables
+   IDYS_PM     IDYS_PC     NA_F
+
+Variables with special functions
+
+  Cluster variable      ID
+
+  Within variables
+   IDYS_PC
+
+  Between variables
+   IDYS_PM     NA_F
+
+  Centering (GRANDMEAN)
+   IDYS_PC
+
+
+Estimator                                                      MLR
+Information matrix                                        OBSERVED
+Maximum number of iterations                                   100
+Convergence criterion                                    0.100D-05
+Maximum number of EM iterations                                500
+Convergence criteria for the EM algorithm
+  Loglikelihood change                                   0.100D-02
+  Relative loglikelihood change                          0.100D-05
+  Derivative                                             0.100D-03
+Minimum variance                                         0.100D-03
+Maximum number of steepest descent iterations                   20
+Maximum number of iterations for H1                           2000
+Convergence criterion for H1                             0.100D-03
+Optimization algorithm                                         EMA
+
+Input data file(s)
+  ex1.dat
+Input data format  FREE
+
+
+SUMMARY OF DATA
+
+     Number of missing data patterns             1
+     Number of clusters                        341
+
+     Average cluster size        5.164
+
+     Estimated Intraclass Correlations for the Y Variables
+
+                Intraclass
+     Variable  Correlation
+
+     IDEATION     0.350
+
+
+
+COVARIANCE COVERAGE OF DATA
+
+Minimum covariance coverage value   0.100
+
+
+     PROPORTION OF DATA PRESENT
+
+
+           Covariance Coverage
+              IDEATION      IDYS_PC       IDYS_PM       NA_F
+              ________      ________      ________      ________
+ IDEATION       1.000
+ IDYS_PC        1.000         1.000
+ IDYS_PM        1.000         1.000         1.000
+ NA_F           1.000         1.000         1.000         1.000
+
+
+
+UNIVARIATE SAMPLE STATISTICS
+
+
+     UNIVARIATE HIGHER-ORDER MOMENT DESCRIPTIVE STATISTICS
+
+         Variable/         Mean/     Skewness/   Minimum/ % with                Percentiles
+        Sample Size      Variance    Kurtosis    Maximum  Min/Max      20%/60%    40%/80%    Median
+
+     IDEATION              3.765       2.070       0.000   58.89%       0.000      0.000      0.000
+            1761.000      48.302       3.696      36.000    0.06%       1.000      8.000
+     IDYS_PC               0.000       0.329      -1.824    0.06%      -0.247     -0.083     -0.012
+            1761.000       0.118       2.358       2.055    0.06%       0.035      0.238
+     IDYS_PM               2.372       0.309       1.000    0.29%       1.990      2.234      2.369
+             341.000       0.225       0.246       4.268    0.29%       2.466      2.784
+     NA_F                 -0.032      -0.177      -3.184    0.29%      -0.780     -0.213      0.019
+             341.000       0.881       0.693       3.075    0.29%       0.220      0.688
+
+
+THE MODEL ESTIMATION TERMINATED NORMALLY
+
+
+
+MODEL FIT INFORMATION
+
+Number of Free Parameters                        6
+
+Loglikelihood
+
+          H0 Value                       -5710.416
+          H0 Scaling Correction Factor      1.9431
+            for MLR
+          H1 Value                       -5710.415
+          H1 Scaling Correction Factor      1.9431
+            for MLR
+
+Information Criteria
+
+          Akaike (AIC)                   11432.832
+          Bayesian (BIC)                 11465.674
+          Sample-Size Adjusted BIC       11446.612
+            (n* = (n + 2) / 24)
+
+Chi-Square Test of Model Fit
+
+          Value                              0.002*
+          Degrees of Freedom                     0
+          P-Value                           0.0000
+          Scaling Correction Factor         1.0000
+            for MLR
+
+*   The chi-square value for MLM, MLMV, MLR, ULSMV, WLSM and WLSMV cannot be used
+    for chi-square difference testing in the regular way.  MLM, MLR and WLSM
+    chi-square difference testing is described on the Mplus website.  MLMV, WLSMV,
+    and ULSMV difference testing is done using the DIFFTEST option.
+
+RMSEA (Root Mean Square Error Of Approximation)
+
+          Estimate                           0.000
+
+CFI/TLI
+
+          CFI                                1.000
+          TLI                                1.000
+
+Chi-Square Test of Model Fit for the Baseline Model
+
+          Value                            177.045
+          Degrees of Freedom                     3
+          P-Value                           0.0000
+
+SRMR (Standardized Root Mean Square Residual)
+
+          Value for Within                   0.000
+          Value for Between                  0.002
+
+
+
+MODEL RESULTS
+
+                                                    Two-Tailed
+                    Estimate       S.E.  Est./S.E.    P-Value
+
+Within Level
+
+ IDEATION   ON
+    IDYS_PC            5.211      0.552      9.442      0.000
+
+ Residual Variances
+    IDEATION          31.371      2.522     12.441      0.000
+
+Between Level
+
+ IDEATION   ON
+    NA_F               0.537      0.299      1.798      0.072
+    IDYS_PM            4.004      0.736      5.443      0.000
+
+ Intercepts
+    IDEATION          -4.761      1.651     -2.884      0.004
+
+ Residual Variances
+    IDEATION          13.982      3.317      4.215      0.000
+
+
+QUALITY OF NUMERICAL RESULTS
+
+     Condition Number for the Information Matrix              0.178E-02
+       (ratio of smallest to largest eigenvalue)
+
+
+STANDARDIZED MODEL RESULTS
+
+
+STDYX Standardization
+
+                                                    Two-Tailed
+                    Estimate       S.E.  Est./S.E.    P-Value
+
+Within Level
+
+ IDEATION   ON
+    IDYS_PC            0.304      0.029     10.500      0.000
+
+ Residual Variances
+    IDEATION           0.908      0.018     51.540      0.000
+
+Between Level
+
+ IDEATION   ON
+    NA_F               0.116      0.066      1.768      0.077
+    IDYS_PM            0.439      0.071      6.170      0.000
+
+ Intercepts
+    IDEATION          -1.100      0.352     -3.121      0.002
+
+ Residual Variances
+    IDEATION           0.746      0.059     12.651      0.000
+
+
+R-SQUARE
+
+Within Level
+
+    Observed                                        Two-Tailed
+    Variable        Estimate       S.E.  Est./S.E.    P-Value
+
+    IDEATION           0.092      0.018      5.250      0.000
+
+Between Level
+
+    Observed                                        Two-Tailed
+    Variable        Estimate       S.E.  Est./S.E.    P-Value
+
+    IDEATION           0.254      0.059      4.299      0.000
+
+
+RESIDUAL OUTPUT
+
+
+     ESTIMATED MODEL AND RESIDUALS (OBSERVED - ESTIMATED) FOR WITHIN
+
+
+           Model Estimated Means
+              IDEATION      IDYS_PC       IDYS_PM       NA_F
+              ________      ________      ________      ________
+                0.000         0.000         0.000         0.000
+
+
+           Residuals for Means
+              IDEATION      IDYS_PC       IDYS_PM       NA_F
+              ________      ________      ________      ________
+                0.000         0.000         0.000         0.000
+
+
+           Model Estimated Covariances
+              IDEATION      IDYS_PC       IDYS_PM       NA_F
+              ________      ________      ________      ________
+ IDEATION      34.567
+ IDYS_PC        0.613         0.118
+ IDYS_PM        0.000         0.000         0.000
+ NA_F           0.000         0.000         0.000         0.000
+
+
+           Residuals for Covariances
+              IDEATION      IDYS_PC       IDYS_PM       NA_F
+              ________      ________      ________      ________
+ IDEATION       0.021
+ IDYS_PC        0.000         0.000
+ IDYS_PM        0.000         0.000         0.000
+ NA_F           0.000         0.000         0.000         0.000
+
+
+           Model Estimated Correlations
+              IDEATION      IDYS_PC       IDYS_PM       NA_F
+              ________      ________      ________      ________
+ IDEATION       1.000
+ IDYS_PC        0.304         1.000
+ IDYS_PM        0.000         0.000         0.000
+ NA_F           0.000         0.000         0.000         0.000
+
+
+           Residuals for Correlations
+              IDEATION      IDYS_PC       IDYS_PM       NA_F
+              ________      ________      ________      ________
+ IDEATION       0.000
+ IDYS_PC        0.000         0.000
+ IDYS_PM        0.000         0.000         0.000
+ NA_F           0.000         0.000         0.000         0.000
+
+
+     ESTIMATED MODEL AND RESIDUALS (OBSERVED - ESTIMATED) FOR BETWEEN
+
+
+           Model Estimated Means
+              IDEATION      IDYS_PC       IDYS_PM       NA_F
+              ________      ________      ________      ________
+                4.718         0.000         2.372        -0.032
+
+
+           Residuals for Means
+              IDEATION      IDYS_PC       IDYS_PM       NA_F
+              ________      ________      ________      ________
+               -0.003         0.000         0.000         0.000
+
+
+           Model Estimated Covariances
+              IDEATION      IDYS_PC       IDYS_PM       NA_F
+              ________      ________      ________      ________
+ IDEATION      18.733
+ IDYS_PC        0.000         0.000
+ IDYS_PM        1.011         0.000         0.225
+ NA_F           1.306         0.000         0.208         0.881
+
+
+           Residuals for Covariances
+              IDEATION      IDYS_PC       IDYS_PM       NA_F
+              ________      ________      ________      ________
+ IDEATION      -0.089
+ IDYS_PC        0.000         0.000
+ IDYS_PM        0.000         0.000         0.000
+ NA_F          -0.001         0.000         0.000         0.000
+
+
+           Model Estimated Correlations
+              IDEATION      IDYS_PC       IDYS_PM       NA_F
+              ________      ________      ________      ________
+ IDEATION       1.000
+ IDYS_PC        0.000         0.000
+ IDYS_PM        0.493         0.000         1.000
+ NA_F           0.322         0.000         0.468         1.000
+
+
+           Residuals for Correlations
+              IDEATION      IDYS_PC       IDYS_PM       NA_F
+              ________      ________      ________      ________
+ IDEATION       0.000
+ IDYS_PC        0.000         0.000
+ IDYS_PM        0.001         0.000         0.000
+ NA_F           0.001         0.000         0.000         0.000
+
+
+     Beginning Time:  13:53:17
+        Ending Time:  13:53:17
+       Elapsed Time:  00:00:00
+
+
+
+MUTHEN & MUTHEN
+3463 Stoner Ave.
+Los Angeles, CA  90066
+
+Tel: (310) 391-9971
+Fax: (310) 391-8971
+Web: www.StatModel.com
+Support: Support@StatModel.com
+
+Copyright (c) 1998-2021 Muthen & Muthen
