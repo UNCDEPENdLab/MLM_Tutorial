@@ -60,7 +60,6 @@ If you already cloned a local copy of the repo, you can get the latest updates u
 ## 15Apr2021: Model selection and model pruning
   - Video of model evidence lecture: https://www.youtube.com/watch?v=jBRdkMGzmIY
   - [Model selection, evidence, and maximal models](06_ModelSelection/model_comparison.html)
-  
   - Video of full flanker analysis walkthrough: https://www.youtube.com/watch?v=rqkym6bj88k
   - [Flanker model building](06_ModelSelection/flanker_rt_mlm_publication.html)
   
