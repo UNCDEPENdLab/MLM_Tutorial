@@ -31,33 +31,48 @@ If you already cloned a local copy of the repo, you can get the latest updates u
 # Meeting topics
 
 ## 21Jan2021: Review of GLM (Regression, ANOVA)
+  - Video of lecture: https://www.youtube.com/watch?v=WX2H49ChOKk
   - [Regression overview](01_Regression/01_Correlation_and_Regression.html)
   - [ANOVA and GLM examples](01_Regression/03_Basic_Analysis.html)
   - [ANOVA contrast tutorial](https://cran.r-project.org/web/packages/afex/vignettes/afex_anova_example.html)
   - [Matrix algebra and the GLM](01_Regression/02_Matrix_Algebra_Overview.html)
   
-## 4Feb2021: Clustering, Basics of MLM, Random Intercept Model
+## 4Feb2021: Clustering, Basics of MLM, Random Intercept Model (Alison Schreiber)
+  - Video of lecture: https://www.youtube.com/watch?v=vBdirrzYAlM
   - [MLM Overview](02_Intro_MLM/MLM_S2.html)
 
 ## 18Feb2021: MLM Intuitions, lme4 implementation, Random slopes
+  - Video of lecture: https://www.youtube.com/watch?v=7Dz2fgUg5ds
   - [MLM Intuitions, Within/Between and Fixed/Random](03_Foundations/03_Terms_L1L2.html)
   - [MLM implementation, Flanker Example](03_Foundations/03_Foundations.html)
   
 ## 4Mar2021: Effect heterogeneity
+  - Video of lecture: https://www.youtube.com/watch?v=HTUO0uif1aE
   - [Random slopes, Causal effect heterogeneity](04_Heterogeneity/04_Heterogeneity.html)
 
 ## 18Mar2021: Random slopes, covariance structure, nesting
+  - Video of lecture: https://www.youtube.com/watch?v=wzFozlL3nrw
   - [Understanding random slopes](05_RandomEffects_Moderation/05_RandomEffects.html)
   - [Visualizing MLM representation of clustering](05_RandomEffects_Moderation/vizrandomeffects.html)
   - [Latent disaggregation](https://psu-psychology.github.io/psy-597-SEM/15_multilevel/multilevel_sem.html#disaggregating-within--versus-between-cluster-effects)
   - [Heterogeneous variance structures](https://quantdev.ssri.psu.edu/sites/qdev/files/ILD_Ch06_2017_MLMwithHeterogeneousVariance.html)
   
 ## 15Apr2021: Model selection and model pruning
+  - Video of model evidence lecture: https://www.youtube.com/watch?v=jBRdkMGzmIY
   - [Model selection, evidence, and maximal models](06_ModelSelection/model_comparison.html)
+  
+  - Video of full flanker analysis walkthrough: https://www.youtube.com/watch?v=rqkym6bj88k
   - [Flanker model building](06_ModelSelection/flanker_rt_mlm_publication.html)
   
 ## 13May2021: Incorporating neural measures into MLMs of behavior (Alex Dombrovski) 
+  - Video of lecture: https://www.youtube.com/watch?v=_jC9Wx2qhF4
   - [fMRI hippocampal regression coefficients in trial-wise MLMs](07_BrainBehavior/beta_cluster_behavior_analyses_mlm_class.html)
 
 ## 27May2021: Multilevel SEM (Tim Allen)
+  - Video of lecture: https://www.youtube.com/watch?v=BfnTmdNsw6c
   - [MSEM Tutorial](08_MSEM/multilevel_sem_v5.html)
+
+## 10Jun2021: Bayesian extensions of MLM (Vanessa Brown)
+  - Video of lecture: https://www.youtube.com/watch?v=biEKsCfYDIQ
+  - [R syntax for analyses](09_Bayes/horizon_regressions.R)
+
