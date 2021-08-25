@@ -43,8 +43,6 @@ Importantly, however, there is not a single 'random slope' model. Rather, the ef
 
 As we scale up the number of random slopes in a model, estimation becomes much more difficult and we may see increasing evidence of model nonconvergence. We'll talk about how to address this when we come to model selection.
 
-Briefly, however, 
-
 ## R-side versus G-side random effects
 
 How do random effects enter into the model? The math gets a little hairy here, so I'm going to try to keep things at a high level. Briefly, each person (L2 unit) in an MLM has a predicted data variance/covariance matrix $\mathbf{V}_j$ that reflects both unmodeled level 1 residual variability (usually denoted $\sigma^2_e$ or just $\sigma^2$) and unmodeled variability due to individual-specific deviations from the sample average in the random effects (e.g., intercept and one or more slopes). Note the emphasis on *unmodeled* here! The $\mathbf{V}_j$ matrix is capturing the residual structure (both variance and covariance) of a given person (L2 unit) after controlling for all fixed effects in the model.
@@ -118,7 +116,7 @@ $$
 \end{bmatrix}
 $$
 
-Thus, when we pre- and post-multiply $\mathbf{G}_j$ by $\mathbf{Z}_j$ (transposing the second time), we will get an $n_j x n_j$ matrix representing the contribution of random effects to the residual variance-covariance $\mathbf{V}_j$.
+Thus, when we pre- and post-multiply $\mathbf{G}_j$ by $\mathbf{Z}_j$ (transposing the second time), we will get an $n_j \times n_j$ matrix representing the contribution of random effects to the residual variance-covariance $\mathbf{V}_j$.
 
 What remains is $\mathbf{R}_j$, which captures the effect of L1 residual variability on the residual variance-covariance matrix, $\mathbf{V}_j$. This matrix is what people are talking about when they say 'R-side' random effects. In the simplest case, the $R$ matrix (which encompasses all people/units) reflects the equal contribution of the L1 residual variability term $\sigma^2_e$ to any given observation (essentially the L1 residual).
 
@@ -161,7 +159,7 @@ $$
 \tau_\textrm{int} & \sigma^2_e + \tau_\textrm{int}& \tau_\textrm{int} & \tau_\textrm{int} & \tau_\textrm{int} \\
 \tau_\textrm{int} & \tau_\textrm{int} & \sigma^2_e + \tau_\textrm{int} & \tau_\textrm{int} & \tau_\textrm{int} \\
 \tau_\textrm{int} & \tau_\textrm{int} & \tau_\textrm{int} & \sigma^2_e + \tau_\textrm{int} & \tau_\textrm{int} \\
-\tau_\textrm{int} & \tau_\textrm{int} & \tau_\textrm{int} & \tau_\textrm{int} & \sigma^2_e
+\tau_\textrm{int} & \tau_\textrm{int} & \tau_\textrm{int} & \tau_\textrm{int} & \sigma^2_e + \tau_\textrm{int}
 \end{bmatrix} 
 $$
 
@@ -346,14 +344,38 @@ Okay, now that we have this complexity under our belts, how does it relate back 
 
 This structure is often called 'compound symmetry' (aka 'CS') because it treats the residual association of measurements on any two occasions (here, I'm thinking of measures nested within person, where person is the L2 unit) as equal. There is a large family of alternative covariance structures that are more flexible in capturing residual covariance patterns.
 
-[Move to HDFS tutorial]
+More about this is provided here: https://quantdev.ssri.psu.edu/sites/qdev/files/ILD_Ch06_2017_MLMwithHeterogeneousVariance.html
+
+# Cross-level interactions (incomplete -- in progress)
+
+In analyses of experiments, we are often interested in whether a level 2 predictor (e.g., extraversion) influences a level 1 phenomenon. In the example above, we were curious to test whether a person's level of neuroticism (one measure per person, a level 2 predictor) moderated the within-person association of trial condition (incongruent vs. congruent) with reaction time on the flanker task. In this case, we represented between-person variation in the $cond \Leftrightarrow RT$ association as a random slope $\boldsymbol{\mu}_{1.} \sim \mathcal{N}(0, \tau_{11})$. And conceptually, neuroticism is a level 2 predictor of individual differences in this random slope, which is a latent variable at level 2.
+
+This type of effect is called a 'cross-level interaction' because it reflects the interaction of an L2 variable with an L1 variable. If this is indeed an interaction, how does it play out in the MLM notation? Let's return to the case where we model RTs on the flanker as a function trial condition, allowing for a random intercept and random slope of condition per person.
+
+## L1 equation
+
+$$
+RT_{ij} = \beta_{0j} + \beta_{1j}\textrm{cond}_{ij} + \varepsilon_{ij}
+$$
+
+## L2 equations
+
+$$
+\beta_{0j} = \gamma_{00} + 
+$$
+
+## L1 predictor is random (i.e., random slope)
+
+## L1 predictor is not random (i.e., fixed only)
 
 ## Nested random effects
 
-[Move to vizrandomeffects]
+[See this](vizrandomeffects.html)
 
--- 
+## L2 predictors of
 
 predictors of random slopes
+
+## Latent disaggregation
 
 Once we setup predictors, then move into latent disaggregation
